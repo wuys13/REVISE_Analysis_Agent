@@ -1,0 +1,18 @@
+# Copy beside verified raw.h5ad and SVC.h5ad, then set sample_id.
+# The expression declaration is an upstream assertion, not a detector.
+schema_version: 1
+sample_id: your_sample
+files:
+  raw: raw.h5ad
+  svc: SVC.h5ad
+expression:
+  scale: untransformed_nonnegative
+columns:
+  broad: Level1
+  subtype: Level2
+label_aliases:
+  Mono_Macro: Mono/Macro
+spatial:
+  key: spatial
+  unit: micron
+  microns_per_coordinate: 1.0
