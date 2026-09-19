@@ -4,6 +4,51 @@ from pathlib import Path
 from typing import Any
 import yaml
 
+
+LINEAR_EXPRESSION_SCALE = "untransformed_nonnegative"
+_COMPATIBLE_LINEAR_SCALES = {"untransformed", LINEAR_EXPRESSION_SCALE}
+_UNKNOWN_SCALE = "unknown"
+
+
+def _expression_declaration(config: dict, side: str) -> dict:
+    """Return a validated source declaration without inferring from values."""
+    expression = config.get("expression", {})
+    if not isinstance(expression, dict):
+        raise ValueError("expression must be a mapping")
+    per_side = expression.get(side, {})
+    if not isinstance(per_side, dict):
+        raise ValueError(f"expression.{side} must be a mapping")
+    identity = per_side.get("identity", "unknown")
+    if not isinstance(identity, str) or not identity.strip():
+        raise ValueError(f"expression.{side}.identity must be a nonempty string")
+    matrix = per_side.get("matrix", "X")
+    if matrix != "X":
+        raise ValueError("The single-object interface currently consumes matrix X only")
+    legacy_scales = []
+    for location, owner in (("expression.scale", expression),
+                            (f"expression.{side}.scale", per_side)):
+        if "scale" not in owner:
+            continue
+        scale = owner["scale"]
+        if not isinstance(scale, str) or not scale.strip():
+            raise ValueError(f"{location} must be a nonempty string when declared")
+        if scale not in _COMPATIBLE_LINEAR_SCALES | {_UNKNOWN_SCALE}:
+            raise ValueError(
+                f"{location} {scale!r} is incompatible with the formal "
+                "nonnegative linear X contract"
+            )
+        legacy_scales.append(scale)
+    return {"identity": identity, "legacy_scale_unknown": _UNKNOWN_SCALE in legacy_scales,
+            "matrix": matrix}
+
+
+def _validate_expression_config(config: dict) -> None:
+    if not isinstance(config, dict):
+        raise ValueError("config must be a mapping")
+    for side in ("raw", "svc"):
+        _expression_declaration(config, side)
+
+
 @dataclass
 class Sample:
     sample_id: str
@@ -11,6 +56,11 @@ class Sample:
     svc: Any
     config: dict
     source: Path
+
+    def __post_init__(self):
+        # Direct construction is a supported test/notebook path and must obey
+        # the same formal input contract as load_sample().
+        _validate_expression_config(self.config)
 
     @property
     def broad_key(self):
@@ -25,24 +75,23 @@ class Sample:
         return self.config.get("columns", {}).get("reconstruction", "SVC_cluster")
 
     def expression(self, side: str) -> dict:
-        """Declared matrix identity and transformation, never inferred from .X."""
+        """Return the fixed computation contract and source-declared identity."""
         if side not in {"raw", "svc"}:
             raise ValueError("side must be raw or svc")
-        declaration = self.config.get("expression", {})
-        per_side = declaration.get(side, {})
-        # An older shared scale remains readable, but does not assert identity.
-        return {"identity": per_side.get("identity", "unknown"),
-                "scale": per_side.get("scale", declaration.get("scale", "unknown")),
-                "matrix": per_side.get("matrix", "X")}
+        declaration = _expression_declaration(self.config, side)
+        return {"identity": declaration["identity"],
+                "scale": LINEAR_EXPRESSION_SCALE,
+                "matrix": declaration["matrix"]}
 
     def expression_unavailable(self, side: str) -> str | None:
+        if side not in {"raw", "svc"}:
+            raise ValueError("side must be raw or svc")
+        source = _expression_declaration(self.config, side)
         declaration = self.expression(side)
         if declaration["identity"] == "unknown":
             return f"{side}: expression matrix identity is unknown"
-        if declaration["scale"] == "unknown":
-            return f"{side}: expression transformation state is unknown"
-        if declaration["scale"] not in {"untransformed_nonnegative", "log1p", "log1p_nonnegative"}:
-            return f"{side}: unsupported expression scale {declaration['scale']!r}"
+        if source["legacy_scale_unknown"]:
+            return f"{side}: legacy expression scale is explicitly unknown"
         if getattr(self, side).X is None:
             return f"{side}: expression matrix .X is absent"
         return None
@@ -84,19 +133,7 @@ def read_sample_config(sample_yaml: str | Path) -> tuple[Path, dict]:
     files = config.get("files")
     if not isinstance(files, dict) or not all(isinstance(files.get(k), str) for k in ("raw", "svc")):
         raise ValueError("files.raw and files.svc must name H5AD files")
-    expression = config.get("expression", {})
-    if not isinstance(expression, dict):
-        raise ValueError("expression must be a mapping")
-    for side in ("raw", "svc"):
-        declaration = expression.get(side, {})
-        if not isinstance(declaration, dict):
-            raise ValueError(f"expression.{side} must be a mapping")
-        for field in ("identity", "scale"):
-            value = declaration.get(field, "unknown")
-            if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"expression.{side}.{field} must be a nonempty string")
-        if declaration.get("matrix", "X") != "X":
-            raise ValueError("The single-object interface currently consumes matrix X only")
+    _validate_expression_config(config)
     return source, config
 
 
@@ -108,7 +145,7 @@ def resolve_path(value: str | Path, base: Path) -> Path:
 def load_sample(sample_yaml: str | Path) -> Sample:
     """Read native objects without pairing, transformation or annotation.
 
-    Expression scale is a declared upstream contract, not inferred from values.
+    X has one fixed linear contract; identity is source-declared, never inferred.
     Scientific requirements such as coordinates are checked by their consumers.
     """
     import anndata as ad

@@ -54,16 +54,88 @@ def _sample_lock(sample_dir: Path):
 
 def resolve_parameters(parameters: dict | None, base: Path) -> dict:
     """Resolve resource paths; each analysis checks only its own requirements."""
-    effective = dict(parameters or {})
+    effective = _resolve_parameter_layer(parameters, base)
     resource = effective.get("geneset_path")
     names = effective.get("gene_set_names")
     if resource is not None:
         if effective.get("gene_sets") is not None:
             raise ValueError("Use either gene_sets or geneset_path, not both")
-        effective["geneset_path"] = str(resolve_path(resource, base))
     elif names is not None:
         raise ValueError("gene_set_names requires geneset_path")
     return effective
+
+
+def _resolve_parameter_layer(parameters: dict | None, base: Path) -> dict:
+    """Resolve paths in one precedence layer before it is overlaid."""
+    if parameters is not None and not isinstance(parameters, dict):
+        raise ValueError("analysis parameters must be a mapping")
+    effective = dict(parameters or {})
+    resource = effective.get("geneset_path")
+    if resource is not None:
+        effective["geneset_path"] = str(resolve_path(resource, base))
+    return effective
+
+
+def _analysis_parameters(config: dict, key: str, analysis: str) -> dict:
+    configured = config.get(key, {})
+    if configured is None:
+        configured = {}
+    if not isinstance(configured, dict):
+        raise ValueError(f"{key} must be a mapping")
+    parameters = configured.get(analysis, {})
+    if parameters is None:
+        parameters = {}
+    if not isinstance(parameters, dict):
+        raise ValueError(f"{key}.{analysis} must be a mapping")
+    return parameters
+
+
+def resolve_analysis_parameters(
+    sample_yaml,
+    analysis: str,
+    *,
+    project_yaml=None,
+    overrides: dict | None = None,
+) -> dict:
+    """Merge explicit sample, project and call parameters with source-aware paths.
+
+    Analysis implementations remain the owners of method defaults. Relative
+    resource paths are made absolute before layers merge, so a surviving value
+    always retains the base directory of the YAML that declared it. Explicit
+    call overrides follow the direct-run convention and resolve from the sample
+    YAML directory.
+    """
+    if analysis not in ANALYSES:
+        raise ValueError(f"Unknown analysis {analysis!r}; choose from {ANALYSES}")
+    sample_source = Path(sample_yaml).expanduser().resolve()
+    sample_config = read_yaml(sample_source)
+    safe_segment(sample_config.get("sample_id"))
+    sample_parameters = _resolve_parameter_layer(
+        _analysis_parameters(sample_config, "analysis_parameters", analysis),
+        sample_source.parent,
+    )
+
+    project_parameters = {}
+    if project_yaml is not None:
+        project_source = Path(project_yaml).expanduser().resolve()
+        project_config = read_yaml(project_source)
+        samples = project_config.get("samples")
+        if (not isinstance(samples, list) or not samples
+                or any(not isinstance(value, (str, Path)) for value in samples)):
+            raise ValueError("samples must be a nonempty list of sample YAML paths")
+        project_samples = {resolve_path(value, project_source.parent) for value in samples}
+        if sample_source not in project_samples:
+            raise ValueError(f"Sample {sample_source} is not declared by project {project_source}")
+        project_parameters = _resolve_parameter_layer(
+            _analysis_parameters(project_config, "analyses", analysis),
+            project_source.parent,
+        )
+
+    override_parameters = _resolve_parameter_layer(overrides, sample_source.parent)
+    merged = {**sample_parameters, **project_parameters, **override_parameters}
+    # All resource paths are absolute by now; this validates the merged choice
+    # without changing which declaration source owns a surviving path.
+    return resolve_parameters(merged, sample_source.parent)
 
 
 def _check_destination(destination: Path, sample_id: str, analysis: str):
@@ -118,7 +190,7 @@ def run_analysis(sample_yaml, analysis: str, output_dir, parameters: dict | None
         }
         try:
             try:
-                effective = resolve_parameters(parameters, source.parent)
+                effective = resolve_analysis_parameters(source, analysis, overrides=parameters)
                 result["parameters"] = effective
                 sample = load_sample(source)
                 implementation = importlib.import_module(f"revise_analysis.analyses.{analysis}")

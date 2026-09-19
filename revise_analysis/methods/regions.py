@@ -274,7 +274,7 @@ def flag_region_windows(window_metrics: pd.DataFrame, *, threshold: float, value
     ``gain_neff``).  This avoids treating State diversity and reconstruction
     Gain as interchangeable scientific quantities.
     """
-    required = {"window_id", "valid_window", "n_units", value_column}
+    required = {"window_id", "valid_window", value_column}
     if missing := required - set(window_metrics.columns):
         raise KeyError(f"window_metrics missing columns: {sorted(missing)}")
     if not np.isfinite(threshold) or threshold <= 0 or not np.isfinite(window_side_length) or window_side_length <= 0:
@@ -283,6 +283,16 @@ def flag_region_windows(window_metrics: pd.DataFrame, *, threshold: float, value
     flagged["in_region"] = flagged["valid_window"].astype(bool) & (pd.to_numeric(flagged[value_column], errors="coerce") >= threshold)
     valid, selected = flagged.loc[flagged.valid_window.astype(bool)], flagged.loc[flagged.in_region]
     area = float(window_side_length ** 2)
-    valid_units, selected_units = int(valid.n_units.sum()), int(selected.n_units.sum())
-    summary = pd.DataFrame([{"value_column": value_column, "threshold": float(threshold), "window_side_length": float(window_side_length), "n_valid_windows": int(valid.shape[0]), "n_region_windows": int(selected.shape[0]), "region_area": float(selected.shape[0] * area), "region_area_fraction": float(selected.shape[0] / valid.shape[0]) if not valid.empty else np.nan, "n_valid_units": valid_units, "n_region_units": selected_units, "region_unit_fraction": float(selected_units / valid_units) if valid_units else np.nan}])
+    row = {"value_column": value_column, "threshold": float(threshold),
+           "window_side_length": float(window_side_length), "n_valid_windows": int(valid.shape[0]),
+           "n_region_windows": int(selected.shape[0]), "region_area": float(selected.shape[0] * area),
+           "region_area_fraction": float(selected.shape[0] / valid.shape[0]) if not valid.empty else np.nan}
+    # State has one native unit population; differences have two independent ones.
+    for prefix, column in (("", "n_units"), ("raw_", "raw_n_units"), ("svc_", "svc_n_units")):
+        if column not in flagged:
+            continue
+        valid_units, selected_units = int(valid[column].sum()), int(selected[column].sum())
+        row.update({f"{prefix}n_valid_units": valid_units, f"{prefix}n_region_units": selected_units,
+                    f"{prefix}region_unit_fraction": selected_units / valid_units if valid_units else np.nan})
+    summary = pd.DataFrame([row])
     return summary, flagged

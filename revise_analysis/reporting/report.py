@@ -248,7 +248,7 @@ _TOPIC_CONTEXT = {
     "program-overall": "每侧在固定 cohort 与基因轴上评分一次。查看覆盖率和实际 rank cutoff 后再判断比较条件；两侧分数不自动作差。",
     "anatomy": "完整 Raw 的组织背景独立于 State 网格；Interface 来自窗口内 Tumor 与指定 Normal 来源共存。无覆盖与 Other 分开。",
     "scale": "推荐只依据 SVC 标签支持，不依据 State/Gain 大小；Raw/common 曲线若为坐标潜在支持，不代表已有表达 baseline。显式尺度不会被推荐覆盖。",
-    "diversity": "Kobs、entropy、Neff 与 evenness 描述不同方面；主 State 使用完整输入 SVC 标签，表达 baseline 保留自己的实际 cohort。",
+    "diversity": "Kobs、entropy、Neff=exp(H) 与 evenness=Neff/Kobs 描述不同方面；数值来自生效参数指定的方窗、最少单位数与等量抽样次数。主 State 使用完整输入 SVC 标签，表达 baseline 保留自己的实际 cohort。",
     "state": "State 表示 SVC 自身局部标签多样性。先读连续场，再读阈值和区域；阈值不可用时保留连续结果，未知不计入区域外。",
     "gain": "ΔNeff vs Raw Leiden 保留共同有效窗口中的正负差值。正值只作 Gain candidate；Raw K-control 只检查标签数量粒度，不证明生物学改善。",
     "region-anatomy": "按 SVC 观测点落入 Anatomy 的组成阅读，Raw 背景另保留；State、差值候选各有独立分母，不把同源汇总当独立验证。",
@@ -415,15 +415,22 @@ def _impact_paths(topic: str, scope: str | None, result: dict, by_relative: dict
                       "tables/raw_point_anatomy.csv", "tables/svc_point_anatomy.csv", "figures/raw_anatomy_context.png"]
     elif topic == "anatomy" and slug:
         candidates = [f"tables/parent_anatomy_raw_{slug}.csv", f"tables/parent_anatomy_raw_baseline_{slug}.csv",
-                      f"tables/parent_anatomy_svc_{slug}.csv"]
+                      f"tables/parent_anatomy_svc_{slug}.csv", f"figures/anatomy_neff_state_{slug}.png"]
     elif topic == "scale" and slug:
         candidates = [f"tables/window_scale_recommendation_{slug}.json", f"tables/window_scale_support_{slug}.csv",
+                      f"tables/window_support_grid_{slug}.csv", f"figures/window_support_grid_{slug}.png",
                       f"figures/window_scale_support_{slug}.png", f"figures/window_scale_support_{slug}_retention.png",
                       f"figures/window_scale_support_{slug}_common_coverage.png",
                       f"figures/state_{slug}_region_windows_support.png"]
     elif topic == "diversity" and slug:
         candidates = [f"tables/window_diversity_svc_{slug}.csv", f"tables/window_diversity_raw_{slug}.csv",
-                      f"tables/window_diversity_svc_leiden_baseline_{slug}.csv", f"tables/window_diversity_raw_level2_baseline_{slug}.csv"]
+                      f"tables/window_diversity_svc_leiden_baseline_{slug}.csv", f"tables/window_diversity_raw_level2_baseline_{slug}.csv",
+                      f"tables/window_diversity_raw_k_control_{slug}.csv",
+                      f"figures/window_diversity_svc_{slug}.png", f"figures/window_diversity_raw_{slug}.png",
+                      f"figures/window_diversity_svc_leiden_baseline_{slug}.png",
+                      f"figures/window_diversity_raw_level2_baseline_{slug}.png",
+                      f"figures/window_diversity_raw_k_control_{slug}.png",
+                      f"figures/baseline_window_metrics_{slug}.png"]
     elif topic == "state" and slug:
         candidates = [f"tables/state_{slug}_region_extent.csv", f"tables/state_{slug}_threshold.json",
                       f"tables/state_{slug}_threshold_bootstrap.csv", f"tables/state_{slug}_region_windows.csv",
@@ -440,7 +447,9 @@ def _impact_paths(topic: str, scope: str | None, result: dict, by_relative: dict
                       f"figures/gain_{slug}_threshold_bootstrap.png", f"figures/gain_{slug}_region_windows_distribution.png",
                       f"figures/gain_{slug}_region_windows_support.png"]
     elif topic == "region-anatomy" and slug:
-        candidates = [f"tables/integrated_region_anatomy_summary_{slug}.csv", f"tables/integrated_spatial_evidence_{slug}.csv"]
+        candidates = [f"tables/integrated_region_anatomy_summary_{slug}.csv",
+                      f"tables/integrated_anatomy_conditionals_{slug}.csv",
+                      f"tables/integrated_spatial_evidence_{slug}.csv"]
     elif topic == "label-composition" and slug:
         candidates = [f"tables/integrated_label_composition_{slug}.csv", f"tables/integrated_label_units_{slug}.csv"]
     elif topic == "program-location" and slug:
@@ -450,7 +459,7 @@ def _impact_paths(topic: str, scope: str | None, result: dict, by_relative: dict
                 candidates += [f"{prefix}_units.csv", f"{prefix}_anatomy.csv", f"{prefix}_region.csv", f"{prefix}_window.csv"]
     elif topic == "changed-location" and slug:
         candidates = [f"figures/spatial_changed_map_{slug}.png", f"tables/integrated_changed_units_{slug}.csv",
-                      f"tables/spatial_changed_map_{slug}.csv"]
+                      f"tables/integrated_changed_unit_context_{slug}.csv", f"tables/spatial_changed_map_{slug}.csv"]
     present: list[str] = []
     for relative in candidates:
         if relative in by_relative and relative not in present:
@@ -626,7 +635,22 @@ def _scope_fact(topic: str, scope: str | None, scope_label: str, artifacts: list
         if frame is not None:
             valid = frame.loc[_bool_series(frame.valid_window)] if "valid_window" in frame else frame
             neff = pd.to_numeric(valid.get("neff", pd.Series(dtype=float)), errors="coerce").dropna()
-            return f"{scope_label} 的 SVC 局部多样性有 {len(valid)} 个有效窗口；Neff 中位数为 {neff.median():.3g}。" if not neff.empty else f"{scope_label} 没有可读取的有效 Neff 窗口。"
+            parameters = result.get("parameters", {}) if isinstance(result.get("parameters"), dict) else {}
+            sides = parameters.get("parent_window_side_microns", {})
+            side = sides.get(scope) if isinstance(sides, dict) else sides
+            side_text = f"{float(side):g} μm 方窗" if isinstance(side, (int, float)) and not isinstance(side, bool) else "方窗边长未记录"
+            minimum = parameters.get("min_window_units")
+            draws = parameters.get("n_window_draws")
+            sampling = []
+            if isinstance(minimum, int) and not isinstance(minimum, bool):
+                sampling.append(f"有效窗至少 {minimum} 单位")
+                if isinstance(draws, int) and not isinstance(draws, bool):
+                    sampling.append(f"每次抽取 {minimum} 个单位，重复 {draws} 次后取指标均值")
+            elif isinstance(draws, int) and not isinstance(draws, bool):
+                sampling.append(f"重复等量抽样 {draws} 次后取指标均值（每次抽取数未记录）")
+            detail = "，".join([side_text, *sampling])
+            return (f"{scope_label} 的 SVC 局部多样性按 {detail} 计算，有 {len(valid)} 个有效窗口；"
+                    f"Neff=exp(H)，其中 H 为标签 Shannon entropy；Neff 中位数为 {neff.median():.3g}。") if not neff.empty else f"{scope_label} 没有可读取的有效 Neff 窗口。"
     if topic in {"state", "gain"} and slug:
         extent = available.get(f"tables/{topic}_{slug}_region_extent.csv")
         if extent is not None and not extent.empty:
@@ -636,6 +660,9 @@ def _scope_fact(topic: str, scope: str | None, scope_label: str, artifacts: list
             status = threshold.get("status", "unknown")
             if pd.notna(n_valid) and pd.notna(n_region):
                 return f"{scope_label} 的 {topic.title()} 有 {int(n_valid)} 个有效窗口、{int(n_region)} 个区域窗口；阈值状态 {status}。"
+            if topic == "gain" and pd.notna(row.get("svc_n_valid_units")) and pd.notna(row.get("svc_n_region_units")):
+                return (f"{scope_label} 的 Gain 候选在 SVC 支持中覆盖 {int(row.get('svc_n_region_units'))}/"
+                        f"{int(row.get('svc_n_valid_units'))} 个单位；Raw 支持按同一物理窗口另存，阈值状态 {status}。")
         windows = available.get(f"tables/{topic}_{slug}_region_windows.csv")
         if windows is not None:
             valid = int(_bool_series(windows.valid_window).sum()) if "valid_window" in windows else len(windows)

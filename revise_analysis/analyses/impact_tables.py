@@ -36,7 +36,6 @@ def common_valid_delta(raw: pd.DataFrame, svc: pd.DataFrame, *,
         "window_y": right.loc[common, "window_y"].to_numpy(),
     })
     result[delta_column] = result["svc_neff"] - result["raw_neff"]
-    result["n_units"] = result[["raw_n_units", "svc_n_units"]].min(axis=1).astype(int)
     result["valid_window"] = True
     return result
 
@@ -90,4 +89,24 @@ def aggregate_scores(scores: pd.DataFrame, *, group_columns: Iterable[str]) -> p
                      "score_median": float(valid.median()) if not valid.empty else np.nan,
                      "missing_status": "ok" if valid.size == group.shape[0] else
                                        ("unavailable" if valid.empty else "partial")})
+    return pd.DataFrame(rows)
+
+
+def anatomy_conditionals(units: pd.DataFrame) -> pd.DataFrame:
+    """Descriptive SVC-unit denominators; unknown status is never outside."""
+    rows = []
+    for kind in ("state", "gain"):
+        column = f"{kind}_region"
+        for anatomy, group in units.groupby("anatomy_region", dropna=False, observed=True):
+            values = group[column].astype("boolean")
+            inside = int(values.fillna(False).sum())
+            known = int(values.notna().sum())
+            total = len(group)
+            rows.append({"region_kind": kind, "anatomy_region": anatomy,
+                         "n_units": total, "n_inside": inside, "n_outside": known - inside,
+                         "n_unknown": total - known, "n_known": known,
+                         "fraction_inside_known": inside / known if known else np.nan,
+                         "fraction_unknown": (total - known) / total if total else np.nan,
+                         "fraction_inside_parent": inside / len(units) if known and len(units) else np.nan,
+                         "denominator_parent_units": len(units)})
     return pd.DataFrame(rows)

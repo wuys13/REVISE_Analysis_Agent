@@ -8,7 +8,7 @@
 | `spatial_autocorrelation` | 基因在各自原生空间单位上的自相关 | 各侧表达与空间坐标 | [Moran](spatial-autocorrelation.md)，每侧基因表和比较图 |
 | `pathway_activity` | 基因集覆盖和通路评分分布有什么差异 | 显式基因集、AUCell 可选依赖 | [通路活性](pathway-activity.md)，覆盖、原生单位分数和分布图 |
 
-调用见[输入输出协议](../input-output.md)。默认分析 scope 是逻辑标签，不是重建文件夹。正式入口不会自动运行新的 CCI、TLS 或其他跟进分析。
+调用见[输入输出协议](../input-output.md)。默认分析 scope 是逻辑标签，不是重建文件夹。Impact Notebook 支持 sample/project/override 参数层和可失效阶段；参数变化后只重跑实际受影响的阶段。正式入口不会自动运行新的 CCI、TLS 或其他跟进分析。
 
 ## 可复用计算工具
 

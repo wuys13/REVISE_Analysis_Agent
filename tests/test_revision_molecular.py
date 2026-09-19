@@ -13,7 +13,7 @@ from revise_analysis.analyses.impact_molecular import run_molecular, aggregate_p
 def make_workflow():
     raw = AnnData(np.ones((8, 4)), obs=pd.DataFrame({'Level1': ['Fibroblast'] * 4 + ['T'] * 4}, index=[f'u{i}' for i in range(8)]), var=pd.DataFrame(index=list('abcd')))
     raw.obsm['spatial'] = np.c_[np.arange(8), np.zeros(8)]
-    sample = Sample('test', raw, raw.copy(), {'expression': {s: {'identity': 'test', 'scale': 'log1p'} for s in ('raw', 'svc')}}, Path('sample.yaml'))
+    sample = Sample('test', raw, raw.copy(), {'expression': {s: {'identity': 'test'} for s in ('raw', 'svc')}}, Path('sample.yaml'))
     params = {'scopes': ['All', 'Fibroblast'], 'sample_n_units': 3, 'random_state': 42,
               'moran_n_neighbors': 2, 'gene_sets': {'P': ['a']}, 'pathway_auc_threshold': .05,
               'parent_window_side_microns': {'All': 2, 'Fibroblast': 2}}

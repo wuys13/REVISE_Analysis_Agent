@@ -5,9 +5,10 @@ files:
   raw: raw.h5ad
   svc: SVC.h5ad
 expression:
-  raw: {matrix: X, identity: unknown, scale: unknown}
-  svc: {matrix: X, identity: unknown, scale: unknown}
-# Known scales: untransformed_nonnegative or log1p. Unknown allows spatial labels.
+  raw: {matrix: X, identity: unknown}
+  svc: {matrix: X, identity: unknown}
+# X is always finite, nonnegative, unlogged linear expression. Declare only an
+# identity supported by provenance; unknown keeps expression analyses unavailable.
 columns:
   broad: Level1
   subtype: Level2

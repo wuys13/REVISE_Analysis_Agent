@@ -9,6 +9,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import traceback
+from copy import deepcopy
+import json
 
 import numpy as np
 import pandas as pd
@@ -16,7 +18,7 @@ import pandas as pd
 from ._shared import DEFAULT_SCOPES, coordinates, deterministic_subset, save_json, save_table, unavailable
 from revise_analysis.methods.errors import PrerequisiteUnavailable
 
-from .impact_tables import changed_unit_summary, common_valid_delta, label_composition
+from .impact_tables import changed_unit_summary, common_valid_delta, label_composition, anatomy_conditionals
 
 
 STAGE_ORDER = ("input", "baseline", "support", "diversity", "regions", "anatomy",
@@ -33,6 +35,35 @@ SECTION_DEFINITIONS = (
     ("integration", "集成空间证据", "带有明确支持数和分母的派生事实表。"),
 )
 
+
+# Explicit dependencies for this workflow, not a general scheduling framework.
+_STAGE_DEPENDENCIES = {
+    "input": (), "baseline": (), "support": ("input",),
+    "diversity": ("support",), "regions": ("diversity",),
+    "anatomy": ("support",), "molecular": ("input",),
+    "membership": ("input",),
+    "integration": ("regions", "anatomy"), "figures": (),
+}
+_STAGE_STATE = {
+    "input": ("svc_labels",),
+    "baseline": ("partitions", "prepared_graphs", "partition_cohorts", "raw_level2"),
+    "support": ("origin", "microns_per_coordinate", "anatomy_side", "anatomy_windows", "raw_anatomy_points"),
+    "diversity": ("windows",), "regions": ("region_tables", "gains", "raw_k_controls"),
+    "anatomy": ("point_anatomy", "parent_anatomy"),
+    "molecular": ("moran", "program_scores"), "membership": ("membership",),
+    "integration": (), "figures": (),
+}
+_STAGE_DOWNSTREAM = {
+    "input": set(STAGE_ORDER),
+    "baseline": {"baseline", "support", "diversity", "regions", "anatomy", "membership", "integration", "figures"},
+    "support": {"support", "diversity", "regions", "anatomy", "integration", "figures"},
+    "diversity": {"diversity", "regions", "integration", "figures"},
+    "regions": {"regions", "integration", "figures"},
+    "anatomy": {"anatomy", "integration", "figures"},
+    "molecular": {"molecular", "integration", "figures"},
+    "membership": {"membership", "integration", "figures"},
+    "integration": {"integration", "figures"}, "figures": {"figures"},
+}
 
 def _slug(value: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in str(value)).strip("_") or "scope"
@@ -135,6 +166,8 @@ class ImpactWorkflow:
         self.sample, self.output_dir = sample, Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.parameters = effective_parameters(sample, parameters)
+        self._applied_parameters = deepcopy(self.parameters)
+        self._input_config = self._current_input_config()
         self.continue_on_error = continue_on_error
         self.outputs: dict[str, str] = {}
         self.missing: list[dict] = []
@@ -142,25 +175,113 @@ class ImpactWorkflow:
         self.stage_records: list[dict] = []
         self.stage_artifacts: dict[str, list[str]] = {name: [] for name in STAGE_ORDER}
         self.state: dict[str, Any] = {}
+        self._figure_sections: dict[str, str] = {}
+        self._active_stage: str | None = None
+        self.stage_records = [{"stage": name, "status": "pending", "artifacts": []} for name in STAGE_ORDER]
 
     def run(self) -> dict:
         for name in STAGE_ORDER:
             self.run_stage(name)
         return self.result()
 
+    def _current_input_config(self):
+        # Configuration edits require the input cell; no data hashing or cache layer.
+        return deepcopy({key: value for key, value in self.sample.config.items()
+                         if key != "analysis_parameters"})
+
+    def _record(self, name, status, artifacts=()):
+        record = {"stage": name, "status": status, "artifacts": sorted(set(artifacts))}
+        self.stage_records[STAGE_ORDER.index(name)] = record
+        return record
+
+    def _invalidate(self, names):
+        affected = set().union(*(_STAGE_DOWNSTREAM[name] for name in names)) if names else set()
+        for name in affected:
+            for artifact in self.stage_artifacts[name]:
+                self.outputs.pop(artifact, None)
+            self.stage_artifacts[name] = []
+            for key in _STAGE_STATE[name]:
+                self.state.pop(key, None)
+            self._record(name, "pending")
+        self.missing[:] = [row for row in self.missing if row.get("stage") not in affected]
+        self.stage_errors[:] = [row for row in self.stage_errors if row.get("stage") not in affected]
+        # Some plots display more than one scientific branch. Drop their registration
+        # when either input is stale; disk files are never used to discover results.
+        sections = affected - {"figures"}
+        for path, section in list(self._figure_sections.items()):
+            region_view = "regions" in affected and (
+                "_region_windows_support" in path or "anatomy_neff_state_" in path
+                or (self.parameters["raw_k_control"] and "baseline_window_metrics_" in path))
+            if section in sections or region_view or names == {"figures"}:
+                self.outputs.pop(path, None)
+                del self._figure_sections[path]
+        return [name for name in STAGE_ORDER if name in affected]
+
+    def apply_parameters(self, overrides=None):
+        """Apply a parameter patch and return stages that must be run again.
+
+        Notebook configuration reloads pass the complete effective mapping, so
+        removing an override also restores the configured/default value.
+        """
+        supplied = {**self._applied_parameters, **(overrides or {})}
+        if overrides and "window_side_microns" in overrides and "parent_window_side_microns" not in overrides:
+            supplied.pop("parent_window_side_microns", None)
+        resolved = effective_parameters(self.sample, supplied)
+        changed = {key for key in resolved if resolved[key] != self._applied_parameters[key]}
+        roots = set()
+        if changed & {"scopes", "random_state"}:
+            roots.add("input")
+        if changed & {"resolution", "n_top_genes", "sample_n_units", "svc_leiden_baseline"}:
+            roots.add("baseline")
+        if changed & {"sample_n_units", "gene_sets", "geneset_path", "gene_set_names", "pathway_auc_threshold", "moran_n_neighbors"}:
+            roots.add("molecular")
+        if changed & {"anatomy_window_side_microns", "parent_window_side_microns", "window_scale_candidates_microns", "min_window_units", "anatomy_tumor_label", "anatomy_normal_label"}:
+            roots.add("support")
+        if "n_window_draws" in changed:
+            roots.add("diversity")
+        if changed & {"region_n_bootstrap", "raw_k_control", "matched_k_resolutions"}:
+            roots.add("regions")
+        if "membership_same_units" in changed:
+            roots.add("membership")
+        invalidated = self._invalidate(roots)
+        self.parameters = resolved
+        self._applied_parameters = deepcopy(resolved)
+        # Metadata describes the applied configuration even when input labels remain valid.
+        manifest = "tables/input_manifest.json"
+        if manifest in self.outputs:
+            value = json.loads((self.output_dir / manifest).read_text())
+            value["effective_parameters"] = resolved
+            save_json(value, self.output_dir, manifest, self.outputs)
+        return invalidated
+
+    def _assert_current(self, *, allow_input_reload=False):
+        if self.parameters != self._applied_parameters:
+            raise RuntimeError("Parameters changed: call apply_parameters before reading or running results")
+        if self._current_input_config() != self._input_config:
+            self._invalidate({"input"})
+            if not allow_input_reload:
+                raise RuntimeError("Input declarations changed: rerun input before dependent stages")
+
     def run_stage(self, name: str) -> dict:
-        """Run one named stage for notebook use and return its stage record."""
+        """Run a current stage; never consume invalidated prerequisites."""
         if name not in STAGE_ORDER:
             raise ValueError(f"Unknown impact stage {name!r}")
-        before = set(self.outputs)
+        self._assert_current(allow_input_reload=name == "input")
+        if name == "input":
+            self._input_config = self._current_input_config()
+        self._invalidate({name})
         missing_before = len(self.missing)
+        self._active_stage = name
+        error = None
         try:
+            pending = [dependency for dependency in _STAGE_DEPENDENCIES[name]
+                       if self.stage_records[STAGE_ORDER.index(dependency)]["status"] in {"pending", "error"}]
+            if pending:
+                raise RuntimeError(f"Stage {name} requires current stages: {', '.join(pending)}")
             getattr(self, f"stage_{name}")()
             status = "completed"
         except Exception as exc:
-            if not self.continue_on_error:
-                raise
-            status = "error"
+            status, error = "error", exc
             record = {"stage": name, "error_type": type(exc).__name__, "message": str(exc),
                       "traceback": traceback.format_exc()}
             self.stage_errors.append(record)
@@ -169,17 +290,26 @@ class ImpactWorkflow:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(record["traceback"], encoding="utf-8")
             self.outputs[relative] = relative
-        artifacts = sorted(set(self.outputs) - before)
+            self.stage_artifacts[name].append(relative)
+        finally:
+            self._active_stage = None
+        for row in self.missing[missing_before:]:
+            row["stage"] = name
+        artifacts = list(self._figure_sections) if name == "figures" else self.stage_artifacts[name]
         if status == "completed" and len(self.missing) > missing_before:
             status = "partial" if artifacts else "unavailable"
-        self.stage_artifacts[name].extend(artifacts)
-        record = {"stage": name, "status": status, "artifacts": artifacts}
-        self.stage_records.append(record)
+        record = self._record(name, status, artifacts)
+        if error is not None and not self.continue_on_error:
+            raise error
         return record
 
     def result(self) -> dict:
         """Return the current notebook/batch result without running more stages."""
+        self._assert_current()
         reading_artifacts = {key: list(value) for key, value in self.stage_artifacts.items()}
+        for path, section in self._figure_sections.items():
+            if path in self.outputs:
+                reading_artifacts[section].append(path)
         for artifact in ("tables/raw_anatomy_context.csv", "tables/raw_anatomy_windows.csv"):
             if artifact in reading_artifacts["support"]:
                 reading_artifacts["support"].remove(artifact)
@@ -189,16 +319,20 @@ class ImpactWorkflow:
                      "artifacts": reading_artifacts.get(i, [])}
                     for i, t, d in SECTION_DEFINITIONS]
         status = ("failed" if self.stage_errors else
-                  ("partial" if self.missing else ("succeeded" if self.outputs else "skipped")))
-        return {"status": status, "parameters": self.parameters, "outputs": self.outputs,
-                "unavailable": self.missing, "stage_errors": self.stage_errors,
-                "stages": self.stage_records, "sections": sections}
+                  ("partial" if self.missing or any(r["status"] == "pending" for r in self.stage_records) else ("succeeded" if self.outputs else "skipped")))
+        return {"status": status, "parameters": deepcopy(self.parameters), "outputs": dict(self.outputs),
+                "unavailable": deepcopy(self.missing), "stage_errors": deepcopy(self.stage_errors),
+                "stages": deepcopy(self.stage_records), "sections": sections}
 
     def _save_table(self, table, relative):
         save_table(table, self.output_dir, relative, self.outputs)
+        if self._active_stage and relative not in self.stage_artifacts[self._active_stage]:
+            self.stage_artifacts[self._active_stage].append(relative)
 
     def _save_json(self, value, relative):
         save_json(value, self.output_dir, relative, self.outputs)
+        if self._active_stage and relative not in self.stage_artifacts[self._active_stage]:
+            self.stage_artifacts[self._active_stage].append(relative)
 
     def _scope(self, side: str, scope: str, *, adata=None):
         data = getattr(self.sample, side) if adata is None else adata
@@ -260,7 +394,11 @@ class ImpactWorkflow:
                 "broad": self.sample.broad_key, "subtype": self.sample.subtype_key,
                 "reconstruction": getattr(self.sample, "reconstruction_key", "SVC_cluster"),
             },
-            "expression": {side: self._expression(side) for side in ("raw", "svc")},
+            "expression": {side: {"identity": self._expression(side).get("identity", "unknown"),
+                                   "matrix": "X", "required_interface": "nonnegative_nonlog_linear",
+                                   "available": self._expression_reason(side) is None,
+                                   "unavailable_reason": self._expression_reason(side)}
+                           for side in ("raw", "svc")},
             "spatial": self.sample.config.get("spatial", {}),
             "metadata": self.sample.config.get("metadata", {}),
             "provenance": self.sample.config.get("provenance", {}),
@@ -289,7 +427,7 @@ class ImpactWorkflow:
             rows.append({"side": side, "n_units": int(getattr(self.sample, side).n_obs),
                          "n_genes": int(getattr(self.sample, side).n_vars),
                          "expression_identity": expression.get("identity", "unknown"),
-                         "transformation_state": expression.get("scale", "unknown"),
+                         "expression_contract": "nonnegative_nonlog_linear",
                          "expression_available": self._expression_reason(side) is None})
         self._save_table(pd.DataFrame(rows), "tables/input_overview.csv")
         counts = labels.value_counts().rename_axis("reconstruction_label").rename("n_units").reset_index()
@@ -319,11 +457,10 @@ class ImpactWorkflow:
             if reason := self._expression_reason(side):
                 unavailable(f"partition:{side}", reason, self.missing)
                 continue
-            sampled = deterministic_subset(getattr(self.sample, side), self.parameters["sample_n_units"],
-                                           self.parameters["random_state"] + (side == "svc"))
             for scope in self.parameters["scopes"]:
                 try:
-                    cohort = self._scope(side, scope, adata=sampled)
+                    cohort = deterministic_subset(self._scope(side, scope), self.parameters["sample_n_units"],
+                                                  self.parameters["random_state"] + (side == "svc"))
                     result = compute_partitions(
                         cohort, resolution=self.parameters["resolution"], n_top_genes=self.parameters["n_top_genes"],
                         random_state=self.parameters["random_state"],
@@ -391,6 +528,15 @@ class ImpactWorkflow:
             except (KeyError, ValueError) as exc:
                 unavailable(f"window_support:svc:{scope}", str(exc), self.missing)
                 continue
+            configured_side = self.parameters["parent_window_side_microns"][scope] / scale
+            current = assign_square_windows(svc_coords, window_side_length=configured_side, origin=origin)
+            grid = current.groupby("window_id", sort=True).agg(
+                window_x=("window_center_x", "first"), window_y=("window_center_y", "first"),
+                n_units=("x", "size")).reset_index()
+            grid["valid_window"] = grid.n_units >= self.parameters["min_window_units"]
+            grid["window_side_length"] = configured_side
+            grid["window_side_microns"] = configured_side * scale
+            self._save_table(grid, f"tables/window_support_grid_{_slug(scope)}.csv")
             recommendation, svc_curve = select_window_scale(svc_coords, candidate_window_sides=candidates,
                 min_parent_units=self.parameters["min_window_units"], origin=origin)
             svc_curve["window_side_microns"], svc_curve["support_kind"] = svc_curve["window_side_length"] * scale, "svc_parent"
@@ -644,13 +790,6 @@ class ImpactWorkflow:
             comparison = compare_membership(raw.loc[common], svc.loc[common])
             coords = coordinates(self.sample.raw, self.sample.spatial_key).reindex(comparison.assignments.index)
             changed = coords.join(comparison.assignments)
-            if "raw" in self.state.get("point_anatomy", {}):
-                changed = changed.join(self.state["point_anatomy"]["raw"][["anatomy_region"]])
-            state = self.state.get("region_tables", {}).get(("state", scope))
-            if state is not None:
-                side = self.parameters["parent_window_side_microns"][scope] / self.state["microns_per_coordinate"]
-                assigned = assign_square_windows(coords, window_side_length=side, origin=self.state["origin"])
-                changed["state_region"] = assigned["window_id"].map(state.set_index("window_id")["in_region"])
             membership[scope] = changed
             self._save_table(changed, f"tables/spatial_changed_map_{_slug(scope)}.csv")
             self._save_table(comparison.assignments, f"tables/membership_{_slug(scope)}.csv")
@@ -694,6 +833,10 @@ class ImpactWorkflow:
                                          "region_definition_status": "available" if units[column].notna().any() else "unavailable",
                                          "evidence_table": f"tables/integrated_label_units_{slug}.csv"})
             self._save_table(pd.DataFrame(summary_rows), f"tables/integrated_region_anatomy_summary_{slug}.csv")
+            conditionals = anatomy_conditionals(units)
+            conditionals["scope"] = scope
+            conditionals["evidence_table"] = f"tables/integrated_label_units_{slug}.csv"
+            self._save_table(conditionals, f"tables/integrated_anatomy_conditionals_{slug}.csv")
             anatomy = self.state["parent_anatomy"]["svc", scope]
             facts = self.state["region_tables"]["state", scope].merge(anatomy, on="window_id", how="left", suffixes=("", "_anatomy"))
             facts["evidence_type"], facts["scope"] = "state_x_anatomy", scope
@@ -708,6 +851,11 @@ class ImpactWorkflow:
             self._save_table(facts, f"tables/integrated_spatial_evidence_{slug}.csv")
             changed = self.state.get("membership", {}).get(scope)
             if changed is not None:
+                changed = changed.copy()
+                changed["anatomy_region"] = self.state["point_anatomy"]["raw"]["anatomy_region"].reindex(changed.index)
+                assigned = assign_square_windows(changed[["x", "y"]], window_side_length=side, origin=self.state["origin"])
+                changed["state_region"] = assigned["window_id"].map(state)
+                self._save_table(changed, f"tables/integrated_changed_unit_context_{slug}.csv")
                 groups = [x for x in ("state_region", "anatomy_region") if x in changed]
                 if groups:
                     summary = changed_unit_summary(changed, group_columns=groups)
@@ -716,95 +864,18 @@ class ImpactWorkflow:
         from .impact_molecular import aggregate_programs
         aggregate_programs(self)
 
+    def render_figures(self, section=None):
+        """Render current saved tables without executing scientific stages."""
+        self._assert_current()
+        from revise_analysis.plotting import render_impact_figures
+        rendered = render_impact_figures(self.output_dir, self.outputs, self.parameters, section=section)
+        for path, owner in rendered.items():
+            self.outputs[path] = path
+            self._figure_sections[path] = owner
+        return rendered
+
     def stage_figures(self):
-        """Render declared current-run tables and attach explicit reading sections."""
-        from revise_analysis.plotting import (
-            plot_anatomy_context, plot_gain, plot_membership_change, plot_moran_distribution,
-            plot_partition_sizes, plot_pathway_scores, plot_window_field,
-            plot_support_curves, plot_threshold_bootstrap,
-        )
-        from revise_analysis.plotting.impact import plot_reconstruction_labels, plot_diversity_distribution
-        tables = {Path(key).name: key for key in list(self.outputs)
-                  if key.startswith("tables/") and key.endswith(".csv")}
-        def read(name):
-            return pd.read_csv(self.output_dir / tables[name])
-        def draw(name, section, callback):
-            relative = f"figures/{name}.png"
-            callback(self.output_dir / relative)
-            self.outputs[relative] = relative
-            if relative not in self.stage_artifacts[section]:
-                self.stage_artifacts[section].append(relative)
-        if "partition_summary.csv" in tables:
-            draw("partition_sizes", "baseline", lambda p: plot_partition_sizes(read("partition_summary.csv"), p))
-        if "raw_anatomy_context.csv" in tables:
-            draw("raw_anatomy_context", "anatomy", lambda p: plot_anatomy_context(read("raw_anatomy_context.csv"), p))
-        if "reconstruction_labels_units.csv" in tables:
-            labels = read("reconstruction_labels_units.csv")
-            if {"x", "y"}.issubset(labels):
-                draw("reconstruction_labels", "input", lambda p: plot_reconstruction_labels(labels, p))
-        for name in tables:
-            if not (name.startswith(("window_scale_support_", "gain_", "spatial_changed_map_", "moran_", "pathway_"))
-                    or name.endswith(("_threshold_bootstrap.csv", "_region_windows.csv"))):
-                continue
-            frame = read(name)
-            stem = Path(name).stem
-            if name.startswith("window_scale_support_"):
-                draw(stem, "support", lambda p: plot_support_curves(frame, p, title="候选尺度的有效窗口支持"))
-                retention = frame.copy()
-                retention["retained_unit_fraction"] = retention["retained_parent_unit_fraction"].fillna(retention.get("svc_common_retained_fraction"))
-                draw(stem + "_retention", "support", lambda p: plot_support_curves(retention, p, y_column="retained_unit_fraction", title="单位保留比例（共同曲线使用 SVC 分母）"))
-                coverage = frame.loc[frame.support_kind.str.startswith("common_")]
-                draw(stem + "_common_coverage", "support", lambda p: plot_support_curves(coverage, p, y_column="common_fraction_of_svc_valid", title="共同支持 / SVC 有效窗口"))
-            elif name.endswith("_threshold_bootstrap.csv"):
-                draw(stem, "regions", lambda p: plot_threshold_bootstrap(frame, p, title=_figure_title(stem)))
-            elif name.startswith("gain_") and name.endswith("_common_valid_windows.csv"):
-                if "delta_neff_vs_raw_leiden" in frame:
-                    frame["gain_neff"] = frame["delta_neff_vs_raw_leiden"]
-                elif "gain_neff" not in frame:
-                    continue
-                draw(stem, "regions", lambda p: plot_gain(frame, p))
-            elif name.endswith("_region_windows.csv"):
-                value = "delta_neff_vs_raw_leiden" if "delta_neff_vs_raw_leiden" in frame else "neff"
-                title = _figure_title(stem.removesuffix("_region_windows"))
-                draw(stem, "regions", lambda p: plot_window_field(frame, p, value_column=value, title=title))
-                draw(stem + "_distribution", "regions", lambda p: plot_diversity_distribution(frame, p, value_column=value, title=title + " 分布"))
-                if "n_units" in frame:
-                    support = frame.drop(columns=["in_region"], errors="ignore")
-                    draw(stem + "_support", "support", lambda p: plot_window_field(support, p, value_column="n_units", title=title + " 单位支持"))
-            elif name.startswith("spatial_changed_map_"):
-                draw(stem, "membership", lambda p: plot_membership_change(frame, p, title=_figure_title(stem)))
-            elif name.startswith("moran_") and "shared_genes" not in name:
-                draw(stem, "molecular", lambda p: plot_moran_distribution(frame, p, title=_figure_title(stem)))
-            elif name.startswith("pathway_") and "score" in frame:
-                draw(stem, "molecular", lambda p: plot_pathway_scores(frame["score"], p, title=_figure_title(stem)))
-
-        # Relationship views reuse the saved summaries and fixed unit scores.
-        # They add presentation artifacts, never another scientific stage.
-        from revise_analysis.plotting.relationships import render_relationship_figures
-        for relative in render_relationship_figures(self.output_dir, self.outputs):
-            self.outputs[relative] = relative
-            section = "molecular" if Path(relative).stem.startswith("relationships_moran_shared_genes_") else "integration"
-            if relative not in self.stage_artifacts[section]:
-                self.stage_artifacts[section].append(relative)
-
-
-def _figure_title(stem: str) -> str:
-    """Give saved Impact figures a Chinese reader-facing title."""
-    value = stem.replace("_", " ")
-    replacements = (
-        ("state ", "State "),
-        ("gain ", "Gain "),
-        ("moran ", "Moran "),
-        ("pathway ", "通路 "),
-        ("spatial changed map ", "空间 membership 变化图 "),
-        ("threshold bootstrap", "阈值 bootstrap"),
-        ("region windows", "区域窗口"),
-        ("raw", "Raw"),
-        ("svc", "SVC"),
-    )
-    for source, target in replacements:
-        value = value.replace(source, target)
-    return value.strip()
+        self.render_figures()
 
 
 def raw_anatomy_context(sample: Any, *, tumor_label="Tumor", normal_label="Intestinal Epithelial"):

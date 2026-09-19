@@ -19,7 +19,12 @@ from .impact import _pyplot, _save
 Renderer = Callable[[pd.DataFrame, Path, dict[str, Path]], bool]
 
 
-def render_relationship_figures(output_dir: Path, outputs: dict) -> dict[str, str]:
+def render_relationship_figures(
+    output_dir: Path,
+    outputs: dict,
+    *,
+    section: str | None = None,
+) -> dict[str, str]:
     """Render relationship figures from registered, contained CSV artifacts.
 
     ``outputs`` is the workflow artifact registry.  Only its relative-path
@@ -27,6 +32,8 @@ def render_relationship_figures(output_dir: Path, outputs: dict) -> dict[str, st
     escaped, unsupported, or scientifically empty tables are ignored.  The
     returned mapping follows the workflow registry convention.
     """
+    if section is not None and section not in {"molecular", "integration"}:
+        return {}
     root = Path(output_dir).resolve()
     registered = _registered_files(root, outputs)
     metadata = {
@@ -38,13 +45,12 @@ def render_relationship_figures(output_dir: Path, outputs: dict) -> dict[str, st
     for relative, source in registered:
         if relative.suffix.lower() != ".csv":
             continue
+        if section is not None and _relationship_section(relative.name) != section:
+            continue
         renderer = _renderer_for(relative.name)
         if renderer is None:
             continue
-        try:
-            table = pd.read_csv(source)
-        except (OSError, pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeError):
-            continue
+        table = pd.read_csv(source)
         destination_relative = Path("figures") / f"relationships_{relative.stem}.png"
         destination = root / destination_relative
         if renderer(table, destination, metadata):
@@ -75,6 +81,8 @@ def _registered_files(root: Path, outputs: dict) -> list[tuple[Path, Path]]:
 
 
 def _renderer_for(name: str) -> Renderer | None:
+    if name.startswith("integrated_anatomy_conditionals_"):
+        return _render_anatomy_conditionals
     if name.startswith("integrated_region_anatomy_summary_"):
         return _render_region_anatomy
     if name.startswith("integrated_label_composition_"):
@@ -88,6 +96,78 @@ def _renderer_for(name: str) -> Renderer | None:
     if name.startswith("moran_shared_genes_"):
         return _render_moran_shared
     return None
+
+
+def _relationship_section(name: str) -> str | None:
+    if name.startswith("moran_shared_genes_"):
+        return "molecular"
+    if _renderer_for(name) is not None:
+        return "integration"
+    return None
+
+
+def _render_anatomy_conditionals(
+    table: pd.DataFrame,
+    destination: Path,
+    metadata: dict[str, Path],
+) -> bool:
+    """Show saved conditional Anatomy probabilities and their denominators."""
+    required = {
+        "region_kind", "anatomy_region", "n_units", "n_inside", "n_outside",
+        "n_unknown", "n_known", "fraction_inside_known", "fraction_unknown",
+        "fraction_inside_parent", "denominator_parent_units",
+    }
+    if not required.issubset(table):
+        return False
+    frame = table.copy()
+    numeric = required - {"region_kind", "anatomy_region"}
+    for column in numeric:
+        frame[f"_{column}"] = pd.to_numeric(frame[column], errors="coerce")
+    frame = frame.loc[frame["_n_units"].ge(0) & frame["_denominator_parent_units"].gt(0)].copy()
+    if frame.empty:
+        return False
+
+    known_by_kind = frame.groupby("region_kind", dropna=False)["_n_known"].sum(min_count=1)
+    unavailable_kinds = known_by_kind.index[known_by_kind.fillna(0).le(0)].astype(str).tolist()
+    available_kinds = set(known_by_kind.index[known_by_kind.fillna(0).gt(0)].astype(str))
+    frame = frame.loc[frame["region_kind"].astype(str).isin(available_kinds)].copy()
+    if frame.empty:
+        return False
+
+    frame["_label"] = (
+        frame["region_kind"].astype("string").fillna("Unknown").astype(str)
+        + " | "
+        + frame["anatomy_region"].astype("string").fillna("Unknown").astype(str)
+    )
+    frame = frame.sort_values(["region_kind", "anatomy_region"], kind="stable")
+    y = np.arange(len(frame))
+    figure, axes = _pyplot().subplots(1, 3, figsize=(16, max(4.2, .52 * len(frame) + 1.8)), sharey=True)
+    specifications = (
+        ("_fraction_inside_known", "_n_inside", "_n_known", "#C44E52", "区域内 / 已知区域状态", "P(region | Anatomy, known)"),
+        ("_fraction_unknown", "_n_unknown", "_n_units", "#B8BEC7", "区域状态未知 / Anatomy units", "unknown / Anatomy total"),
+        ("_fraction_inside_parent", "_n_inside", "_denominator_parent_units", "#4C78A8", "区域内 / scope parent units", "inside / scope parent total"),
+    )
+    for number, (fraction, numerator, denominator, color, xlabel, title) in enumerate(specifications):
+        axis = axes[number]
+        values = frame[fraction].to_numpy(dtype=float)
+        bars = axis.barh(y, np.nan_to_num(values, nan=0.0), color=color)
+        for bar, value, n_value, d_value in zip(
+            bars, values, frame[numerator], frame[denominator], strict=True,
+        ):
+            label = "未知" if not np.isfinite(value) else f"{int(n_value)}/{int(d_value)}"
+            axis.text(
+                (float(value) if np.isfinite(value) else 0) + .015,
+                bar.get_y() + bar.get_height() / 2, label, va="center", fontsize=8,
+            )
+        axis.set(
+            yticks=y, yticklabels=frame["_label"], xlabel=xlabel, title=title,
+            xlim=(0, 1.12),
+        )
+        axis.invert_yaxis()
+    omitted = f"；未绘（无已知区域状态）：{'、'.join(unavailable_kinds)}" if unavailable_kinds else ""
+    figure.suptitle("Anatomy 条件下的区域支持（每个面板使用自己的明确分母）" + omitted)
+    _save(figure, destination)
+    return True
 
 
 def _render_region_anatomy(table: pd.DataFrame, destination: Path, metadata: dict[str, Path]) -> bool:

@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from .io import read_yaml, safe_segment, resolve_path
-from .runner import ANALYSES, resolve_parameters, run_analysis, write_json
+from .runner import ANALYSES, resolve_analysis_parameters, run_analysis, write_json
 
 
 def run_batch(project_yaml) -> dict:
@@ -40,8 +40,9 @@ def run_batch(project_yaml) -> dict:
             try:
                 if sample in errors:
                     raise ValueError(errors[sample])
-                # Project resource paths belong to project YAML, not sample YAML.
-                effective = resolve_parameters(parameters, source.parent)
+                effective = resolve_analysis_parameters(
+                    sample, analysis, project_yaml=source,
+                )
                 result = run_analysis(sample, analysis, output, effective)
                 tasks.append({"sample": str(sample), "sample_id": result["sample_id"], "analysis": analysis,
                               "status": result["status"], "result": f"{result['sample_id']}/{analysis}/result.json"})

@@ -1,6 +1,6 @@
 # 连续重建影响 Notebook
 
-`01_reconstruction_impact.ipynb` 是针对单个 Raw/SVC 样本的可读科学工作台。阶段执行顺序仍由 `STAGE_ORDER` 控制，参数解析仍复用 `effective_parameters`；Notebook 的新增内容只整理阅读路径，不改变计算对象或科学定义。
+`01_reconstruction_impact.ipynb` 是针对单个 Raw/SVC 样本的可读科学工作台。阶段执行顺序由 `STAGE_ORDER` 控制，参数通过 `resolve_analysis_parameters` 与 `effective_parameters` 解析；Notebook 只组织交互、阅读和显示，不改变计算对象或科学定义。
 
 阅读按三个问题推进：
 
@@ -8,14 +8,19 @@
 2. **State 与差异出现在哪里？** State 使用 SVC 主标签的局部多样性，Gain 只在共同有效窗口上对照 Raw Leiden；Anatomy 由完整 Raw 的 broad 标签独立建立，再按实际观测点解释 parent 窗口。
 3. **位置与分子/成员有什么关系？** Moran 与 State/Gain 平行；AUCell 先固定单位级评分，再做窗口、Anatomy 或 Region 聚合；membership 只在 shared IDs 上比较；集成表连接已保存事实，不是独立验证。
 
-Notebook 会显示每个阶段的中间产物、不可用原因和最终有效参数。`result.outputs` 是当前输出 manifest，阅读辅助函数只读取 manifest 中声明且实际存在的文件，不把目录中的旧文件当作本次结果。源码 Notebook 有意保持未执行状态。
+Notebook 会显示每个阶段的 `pending/completed/partial/unavailable/error` 状态、中间产物、不可用原因、关键参数和最终参数来源。`result.outputs` 是当前输出 manifest，阅读辅助函数只读取 manifest 中声明且实际存在的文件，不把目录中的旧文件当作本次结果。源码 Notebook 有意保持未执行状态。
 
-默认样本是 `data/P2CRC_Xenium/sample.yaml`，默认 Notebook 输出是 `output/notebook/P2CRC_Xenium`。可通过 `SAMPLE_YAML` 和 `OUTPUT_DIR` 覆盖；`RECONSTRUCTION_IMPACT_OVERRIDES` 接受 JSON 参数映射。流程不会猜测表达尺度、替换输入标签或修改 H5AD。
+默认样本是 `data/P2CRC_Xenium/sample.yaml`，默认 Notebook 输出是 `output/notebook/P2CRC_Xenium`。可通过 `SAMPLE_YAML`、可选 `PROJECT_YAML` 和 `OUTPUT_DIR` 覆盖；`RECONSTRUCTION_IMPACT_OVERRIDES` 接受 JSON 参数映射。项目只有一个样本时可从项目声明解析；项目含多个样本时必须显式设置 `SAMPLE_YAML`，不会静默选择第一个。
+
+参数优先级为包默认值 < sample YAML < project YAML < Notebook override。修改 `OVERRIDES` 后先重新运行“应用参数并查看失效阶段”单元。该单元重新解析所有来源，把完整 `EFFECTIVE_PARAMETERS` 快照传给 `workflow.apply_parameters(...)`；这样删除 override 也会恢复 sample/project/default 值。已完成但依赖改动参数的阶段回到 `pending`，无关阶段保持当前。阶段运行前 Notebook 会再次解析并比较待应用参数，若与 `workflow.parameters` 不一致则要求先应用。`run_stage` 会拒绝消费失效前置，成功或科学不可用后按节调用 `render_figures(section)`，所以图与解释就近出现；末尾只保存清单、报告和综合事实，不补跑科学阶段。
+
+例如只改变区域 bootstrap 阈值会失效 regions 及其下游 integration/figures，不要求重算 Moran、AUCell 或原生 membership。改变窗口/支持参数则从 support 起按真实依赖失效；改变表达抽样或分子参数只重算对应 baseline/molecular 分支及其集成消费者。
 
 如果需要生成执行副本，在仓库根目录使用项目环境中的 `nbclient` 和 `nbformat`，不要求 `nbconvert`：
 
 ```bash
 SAMPLE_YAML=/path/to/sample.yaml \
+PROJECT_YAML=/path/to/project.yaml \
 OUTPUT_DIR=/path/to/notebook-output \
 .venv/bin/python - <<'PY'
 from pathlib import Path
@@ -37,4 +42,4 @@ nbformat.write(notebook, executed)
 PY
 ```
 
-小型合成 fixture 适合检查调用顺序。真实样本必须根据上游证据声明表达尺度；非负线性浮点值（包括很小的值）可以保留，流程不因数值大小四舍五入。缺少 Level2、某一侧表达或 AUCell provider 时，只影响依赖它们的阶段，并在结果中保留不可用原因。正式结果与静态报告由批量运行器负责；报告只读取已保存结果。
+小型合成 fixture 适合检查调用顺序。Raw `.X` 表示上游交付的原始侧矩阵，SVC `.X` 表示重建侧矩阵；本仓库不改写它们。正式 `.X` 契约固定为 finite、nonnegative、unlogged linear，真实样本必须根据上游证据声明 identity。确认的线性浮点值（包括小数和小于 1 的值）可以保留；旧 `log`/`log1p` 声明会被拒绝，`identity: unknown` 也不会放行 P2 表达消费者。缺少 Level2、某一侧已确认表达或 AUCell provider 时，只影响依赖它们的阶段，并保留不可用原因。正式结果与静态报告由批量运行器负责；报告只读取已保存结果。

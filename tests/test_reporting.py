@@ -190,3 +190,88 @@ def test_impact_report_uses_fixed_question_tree_scope_order_and_single_image_emb
     assert "不可用：membership:Fibroblast" in text and "此状态不表示没有变化" in text
     assert "Support and scale" in text and "legacy description" in text
     assert "hashchange" in text and "popstate" in text and "IntersectionObserver" in text
+
+
+def test_impact_figures_render_one_section_from_registered_tables(tmp_path: Path):
+    pytest = __import__("pytest")
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    from revise_analysis.plotting import render_impact_figures
+
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    (tables / "input_manifest.json").write_text(json.dumps({
+        "spatial": {"microns_per_coordinate": 2},
+    }), encoding="utf-8")
+    pd.DataFrame({
+        "window_id": ["0_0", "1_0"], "window_x": [5.0, 15.0], "window_y": [5.0, 5.0],
+        "n_units": [5, 2], "valid_window": [True, False],
+        "window_side_length": [10.0, 10.0], "window_side_microns": [20.0, 20.0],
+    }).to_csv(tables / "window_support_grid_All.csv", index=False)
+    anatomy = pd.DataFrame({
+        "window_id": ["0_0", "1_0"], "window_x": [5.0, 15.0], "window_y": [5.0, 5.0],
+        "level1_region": ["Tumor", "Normal"],
+    })
+    anatomy.to_csv(tables / "raw_anatomy_windows.csv", index=False)
+    state = pd.DataFrame({
+        "window_id": ["0_0", "1_0"], "window_x": [5.0, 15.0], "window_y": [5.0, 5.0],
+        "n_units": [5, 2], "valid_window": [True, False],
+        "k_obs": [2.0, None], "entropy": [.6, None], "neff": [1.8, None], "evenness": [.9, None],
+        "in_region": [True, None],
+    })
+    state.to_csv(tables / "state_All_region_windows.csv", index=False)
+    svc = state.drop(columns=["in_region"])
+    svc.to_csv(tables / "window_diversity_svc_All.csv", index=False)
+    raw = svc.copy()
+    raw.loc[0, ["k_obs", "entropy", "neff", "evenness"]] = [1.0, .2, 1.2, .8]
+    raw.to_csv(tables / "window_diversity_raw_All.csv", index=False)
+    outputs = {path.name: path.relative_to(tmp_path).as_posix() for path in tables.iterdir()}
+    parameters = {
+        "anatomy_window_side_microns": 20,
+        "parent_window_side_microns": {"All": 20},
+        "min_window_units": 4, "n_window_draws": 200,
+    }
+
+    diversity = render_impact_figures(tmp_path, outputs, parameters, section="diversity")
+    assert diversity["figures/window_diversity_svc_All.png"] == "diversity"
+    assert diversity["figures/baseline_window_metrics_All.png"] == "diversity"
+    assert not (tmp_path / "figures/anatomy_neff_state_All.png").exists()
+
+    support = render_impact_figures(tmp_path, outputs, parameters, section="support")
+    anatomy_figures = render_impact_figures(tmp_path, outputs, parameters, section="anatomy")
+    assert support["figures/window_support_grid_All.png"] == "support"
+    assert set(support.values()) == {"support"}
+    assert anatomy_figures["figures/anatomy_neff_state_All.png"] == "anatomy"
+    assert all((tmp_path / relative).stat().st_size > 0 for relative in {*diversity, *support, *anatomy_figures})
+
+
+def test_impact_report_embeds_new_exact_paths_once_and_explains_neff_parameters(tmp_path: Path):
+    tables, figures = tmp_path / "tables", tmp_path / "figures"
+    tables.mkdir()
+    figures.mkdir()
+    pd.DataFrame({
+        "window_id": ["0_0"], "valid_window": [True], "neff": [2.0],
+    }).to_csv(tables / "window_diversity_svc_All.csv", index=False)
+    pd.DataFrame({
+        "scope": ["All"], "region_kind": ["state"], "anatomy_region": ["Tumor"],
+        "n_units": [5], "n_inside": [3], "n_outside": [1], "n_unknown": [1], "n_known": [4],
+        "fraction_inside_known": [.75], "fraction_unknown": [.2],
+        "fraction_inside_parent": [.3], "denominator_parent_units": [10],
+    }).to_csv(tables / "integrated_anatomy_conditionals_All.csv", index=False)
+    for name in ("baseline_window_metrics_All.png", "anatomy_neff_state_All.png",
+                 "relationships_integrated_anatomy_conditionals_All.png"):
+        (figures / name).write_bytes(b"saved-figure")
+    paths = [*tables.iterdir(), *figures.iterdir()]
+    result = {
+        "analysis": "reconstruction_impact", "sample_id": "P2", "status": "succeeded",
+        "parameters": {"scopes": ["All"], "parent_window_side_microns": {"All": 40},
+                       "min_window_units": 4, "n_window_draws": 200},
+        "outputs": {path.name: path.relative_to(tmp_path).as_posix() for path in paths},
+    }
+    (tmp_path / "result.json").write_text(json.dumps(result), encoding="utf-8")
+
+    text = render_report(tmp_path).read_text(encoding="utf-8")
+    assert "每次抽取 4 个单位，重复 200 次后取指标均值" in text
+    for name in ("baseline_window_metrics_All.png", "anatomy_neff_state_All.png",
+                 "relationships_integrated_anatomy_conditionals_All.png"):
+        assert text.count(f'src="figures/{name}"') == 1

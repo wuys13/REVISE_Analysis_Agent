@@ -77,6 +77,16 @@ def test_missing_unscored_and_unavailable_relationships_do_not_make_empty_figure
     files = [
         _save(
             root,
+            "tables/integrated_anatomy_conditionals_All.csv",
+            pd.DataFrame({
+                "scope": ["All"], "region_kind": ["gain"], "anatomy_region": ["Tumor"],
+                "n_units": [5], "n_inside": [0], "n_outside": [0], "n_unknown": [5], "n_known": [0],
+                "fraction_inside_known": [np.nan], "fraction_unknown": [1.0],
+                "fraction_inside_parent": [np.nan], "denominator_parent_units": [5],
+            }),
+        ),
+        _save(
+            root,
             "tables/integrated_program_svc_All_P_units.csv",
             pd.DataFrame({
                 "x": [0.0, 1.0], "y": [0.0, 1.0], "score": [np.nan, np.nan],
@@ -228,3 +238,44 @@ def test_relationship_figures_render_each_saved_table_role(tmp_path):
     assert set(result) == expected
     assert all((root / path).stat().st_size > 0 for path in expected)
     assert {path: _digest(root / path) for path in files} == before
+
+
+def test_relationship_figures_filter_section_and_render_anatomy_conditionals(tmp_path, monkeypatch):
+    root = tmp_path / "result"
+    conditional = _save(
+        root,
+        "tables/integrated_anatomy_conditionals_All.csv",
+        pd.DataFrame({
+            "scope": ["All", "All"], "region_kind": ["state", "state"],
+            "anatomy_region": ["Tumor", "Normal"], "n_units": [10, 8],
+            "n_inside": [4, 2], "n_outside": [5, 5], "n_unknown": [1, 1],
+            "n_known": [9, 7], "fraction_inside_known": [4 / 9, 2 / 7],
+            "fraction_unknown": [.1, .125], "fraction_inside_parent": [.2, .1],
+            "denominator_parent_units": [20, 20],
+        }),
+    )
+    molecular = _save(
+        root,
+        "tables/moran_shared_genes_All.csv",
+        pd.DataFrame({
+            "raw_moran": [.1], "svc_moran": [.2], "comparison_available": [True],
+            "raw_n_units": [10], "svc_n_units": [8], "n_common_genes": [1],
+        }),
+    )
+    from revise_analysis.plotting import relationships
+    reads = []
+    original = relationships.pd.read_csv
+
+    def recording_read(path, *args, **kwargs):
+        reads.append(Path(path).name)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(relationships.pd, "read_csv", recording_read)
+    result = render_relationship_figures(
+        root, {conditional: conditional, molecular: molecular}, section="integration",
+    )
+
+    expected = "figures/relationships_integrated_anatomy_conditionals_All.png"
+    assert result == {expected: expected}
+    assert reads == ["integrated_anatomy_conditionals_All.csv"]
+    assert (root / expected).stat().st_size > 0

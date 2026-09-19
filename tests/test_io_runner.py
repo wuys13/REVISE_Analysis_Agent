@@ -37,11 +37,15 @@ def test_loader_preserves_native_axes_and_values(sample_yaml):
 
 def test_unknown_input_scale_is_not_guessed(sample_yaml):
     config = yaml.safe_load(sample_yaml.read_text())
-    config["expression"]["scale"] = "unknown"
+    config["expression"] = {
+        "scale": "unknown",
+        "raw": {"identity": "known"},
+        "svc": {"identity": "known"},
+    }
     sample_yaml.write_text(yaml.safe_dump(config))
     sample = load_sample(sample_yaml)
-    assert sample.expression("svc")["scale"] == "unknown"
-    assert sample.expression_unavailable("svc") is not None
+    assert sample.expression("svc")["scale"] == "untransformed_nonnegative"
+    assert "explicitly unknown" in sample.expression_unavailable("svc")
 
 
 def test_failure_cannot_publish_stale_success(sample_yaml, monkeypatch, tmp_path):

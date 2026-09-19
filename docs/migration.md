@@ -78,7 +78,7 @@ P2 Raw 来源 `REVISE/raw_data/Real_application/P2CRC_Xenium.h5ad`；临时 SVC 
 | 层次 | 实际结果 | 证据 / 限制 |
 | --- | --- | --- |
 | 软件与回归 | 70 项测试通过 | 包括尺度独立、阈值失败、缺 Anatomy、固定评分、异常隔离、未知输入、报告只读、旧产物不冒充当前结果 |
-| 方法执行 | 真实 Scanpy、native Moran、OmicVerse AUCell 在新版合成样本运行 | AUCell 每侧一次，共两次；非整数线性表达及已知 log1p 路径均验证。不是生物学验收 |
+| 方法执行 | 真实 Scanpy、native Moran、OmicVerse AUCell 在新版合成样本运行 | 当时曾验证非整数线性表达与旧 log1p 路径；本轮固定线性输入契约已取代旧 log1p 接口，旧结果不再证明当前输入声明。不是生物学验收 |
 | Raw K-control | 固定 cohort/graph 的真实合成执行通过 | 精确与 nearest 的选择、seed 重现和主标签不变有测试；真实 P2 表达尚不能运行 |
 | P2 主标签空间链 | 17,455 Fibroblast、10 类主标签，0 个阶段错误 | 原样输入来源见样本配置，不代表表达身份已确认 |
 | P2 40 μm State | 4,653 个占据窗口；1,547 个有效；514 个 State 窗口 | Neff 阈值 2.4272768171；500/500 bootstrap 有效；95% CI 2.3346561680–2.5363448625 |
@@ -127,3 +127,32 @@ P2 Raw 来源 `REVISE/raw_data/Real_application/P2CRC_Xenium.h5ad`；临时 SVC 
 - [当前执行版 Notebook](../output/notebook/P2CRC_Xenium/executed_revised.ipynb)
 
 当前沙箱中的 Jupyter socket 与浏览器进程限制，通过本地执行权限机制解决；不依赖 nbconvert。浏览器技术验收不代表用户已认可阅读效果，也不代表生物学改善。
+
+## 2026-09-19 上游生产核验与交互修订验收
+
+本轮重新核对了上游当前实现，但没有修改上游仓库。`REVISE/reconstruct.py:40-68` 现有两条 Raw 路径：显式 `raw_adata` 会在 pipeline 前复制快照；文件路径会在 finalize 阶段重新读取原 source，并检查读取前后的来源文件身份一致。`delivery.prepare_raw` 只补充 obs aliases 和 uns，不写 `.X`；发布的 SVC 来自 pipeline 结果。因此，本仓库继续把 Raw `.X` 称为上游交付的原始侧矩阵，把 SVC `.X` 称为重建侧矩阵，并保持只核验、不改写输入。
+
+sST 当前 runner `sc_svc_super_resolution_application.py:297-310` 将 parent-spot 校正后的 `SVC_X` 构造成 AnnData 保存，最终保存前没有再次 log；pipeline 内部仍包含 normalize，所以不能把它称为 raw counts。当前 `delivery.sample_document` 仍为该路径生成 `scale: unknown`：上游后续需按固定线性接口迁移已确认对象的配置、移除旧 scale 声明，并确认 Raw identity；分析端不增加新的 scale 选项。本轮证据只描述当前生产代码，不能反推历史 P2 文件已经确认，也不能据此放行 P2 Raw/SVC 表达分析。
+
+本轮最终源码已完成以下验收。上面的旧 78 项测试与 10 个代码单元记录保留为历史；本表对应当前交互修订。
+
+| 分类 | 本轮实际结果 |
+| --- | --- |
+| 输入与参数 | 固定线性接口；旧 log 声明拒绝、unknown 不升级；项目/sample/override 共用解析；应用参数和发布前检查 |
+| 重跑正确性 | 当前记录替换，旧 extent/错误/图撤销；局部参数 patch；baseline 错误不阻断标签 State；阈值改变不重复 Moran/AUCell 或成员比较 |
+| 科学修正 | baseline 先 scope 后抽样；Gain 保留 Raw/SVC 独立单位分母；新增 SVC 单位口径 Anatomy 条件表，未知与零分母保持缺失 |
+| 逐节图形 | 输入、支持、多样性、Region、Anatomy、integration 在各自单元产生 1/4/2/3/2/3 张图；末尾不重复展示全部图片 |
+| 软件验证 | 103 项测试通过，4 条依赖弃用/稀疏矩阵效率警告；最后绘图局部兼容调整的 14 项聚焦测试亦通过 |
+| Notebook | nbclient 实际执行全部 17 个代码单元，无错误输出；源码与执行版代码相同；PROJECT_YAML 使用正式 P2 project |
+| 表格核验 | P2 Notebook/batch 23 份表/JSON 逐字节一致；原 19 份科学产物与本轮前一致，2 份输入说明按接口更新，新增支持网格与 Anatomy 条件比例 |
+| 页面 | P2 与合成报告在 1440px/390px 验证图片、目录、直接锚点、前进后退及键盘折叠；无页面错误或整页横向溢出。P2 16 张图、合成 100 张图均只嵌入一次 |
+| 独立待验收项 | 真实 P2 表达分析、历史同口径数值 parity、用户对科学解释和阅读效果的认可 |
+
+证据与交付：
+
+- [本轮执行与逐节图形核验](../output/verification/interactive_acceptance.json)
+- [测试日志](../output/verification/interactive_tests.log) · [Notebook 执行日志](../output/verification/interactive_notebook.log)
+- [轻量验收附件](../output/verification/interactive_acceptance_bundle.zip)：代码版本/文件指纹、配置、环境摘要、核验结果、代表截图和关系图；不含 H5AD。
+- [P2 报告](../output/P2CRC_Xenium/reconstruction_impact/report.html) · [执行 Notebook](../output/notebook/P2CRC_Xenium/executed_revised.ipynb)
+
+本轮使用现有 nbclient 与本地浏览器完成执行；Jupyter socket 与浏览器启动按环境权限机制处理，不依赖 nbconvert。报告刷新只读保存结果。新增 Anatomy 条件比例是描述性关系，不能解释为富集或生物学改善。

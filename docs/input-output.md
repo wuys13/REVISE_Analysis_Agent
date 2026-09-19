@@ -9,8 +9,8 @@ files:
   raw: raw.h5ad
   svc: SVC.h5ad
 expression:
-  raw: {matrix: X, identity: unknown, scale: unknown}
-  svc: {matrix: X, identity: unknown, scale: unknown}
+  raw: {matrix: X, identity: unknown}
+  svc: {matrix: X, identity: unknown}
 columns:
   broad: Level1
   subtype: Level2
@@ -23,11 +23,13 @@ spatial:
   microns_per_coordinate: 0.27380817798463214
 ```
 
-相对路径相对于声明它的 YAML。标签别名只用于分析视图，不改写输入文件。物理尺度仅在需要微米的分析中使用。表达声明必须有来源依据；不知道历史文件是否已归一化时使用 `unknown`。支持 `untransformed_nonnegative`（归一化并 log1p）或 `log1p`（不再次变换）；identity 应描述真实矩阵来源。两侧声明互相独立，`.X` 缺失也可加载标签空间对象。历史共享 scale 可读取但不证明 identity。非负线性浮点值（包括小于 1 的值）是合法输入，不因数值很小而四舍五入、截断或改写；消费方按声明的 scale 处理，负值和非有限值才由相应表达消费者拒绝。
+相对路径相对于声明它的 YAML。标签别名只用于分析视图，不改写输入文件。Raw `.X` 是上游交付的原始侧矩阵，SVC `.X` 是重建侧矩阵；“原始侧”不等于未经预处理的整数 counts。物理尺度仅在需要微米的分析中使用。
 
-公开接口：`load_sample(sample_yaml)`、`run_analysis(sample_yaml, analysis, output_dir, parameters)`、`run_batch(project_yaml)`。输出根下按 `<sample_id>/<analysis>/` 保存 `result.json`、表、图和报告，样本 `index.json` 负责导航。
+表达声明必须有来源依据。正式输入契约固定为 finite、nonnegative、unlogged linear `.X`；identity 已知且未声明旧 scale 时直接使用该契约。兼容旧 `untransformed` / `untransformed_nonnegative`，旧 `scale: unknown` 保持表达不可用；`log`、`log1p`、`log1p_nonnegative` 等旧 log 声明全部拒绝。identity 应描述真实矩阵来源。两侧声明互相独立，`.X` 缺失也可加载标签空间对象。确认的非负线性浮点值允许小数和小于 1 的值，不因数值很小而四舍五入、截断或改写；负值和非有限值由相应表达消费者拒绝。`identity: unknown` 允许标签与空间分析，但不能据此放行表达消费者。
 
-`result.json` 保存实际参数、完成状态、未完成部分及原因、产物相对路径。失败不会把历史结果标为本次成功。可执行合成示例见 `configs/example_project.yaml`。
+公开接口：`load_sample(sample_yaml)`、`resolve_analysis_parameters(sample_yaml, analysis, *, project_yaml=None, overrides=None)`、`run_analysis(sample_yaml, analysis, output_dir, parameters)`、`run_batch(project_yaml)`。参数解析器按 sample < project < overrides 合并显式层；方法默认值仍由具体 analysis 所有。资源路径先相对声明它的 YAML 解析，再参与覆盖。若提供项目，样本必须真实列在该项目 `samples` 中。输出根下按 `<sample_id>/<analysis>/` 保存 `result.json`、表、图和报告，样本 `index.json` 负责导航。
+
+`result.json` 保存实际参数、完成状态、未完成部分及原因、产物相对路径。Impact 的 `stages` 始终包含完整阶段表，尚未执行或因参数变化失效的阶段为 `pending`。失败不会把历史结果标为本次成功。可执行合成示例见 `configs/example_project.yaml`。
 
 ## Python 与命令行
 
@@ -83,12 +85,12 @@ Impact 的 `sample_n_units` 只约束表达 baseline/分子评分群体，不裁
 
 ## Impact 阅读分支与表达确认
 
-确认 Raw 表达的 identity/scale 后，Raw baseline、Gain、Raw K-control 和 Raw-defined membership 可以按各自前提运行；它们仍需要 SVC 的重建标签、空间坐标或共同 ID。Moran 与 AUCell 按侧独立消费表达：一侧满足条件即可保存该侧的原生结果，不能把另一侧缺失写成零值。跨侧比较（例如 shared-gene Moran 或 Raw/SVC 共同窗口的差值）只有在比较涉及的两侧条件都满足时才可用；单侧结果仍应保留并标明比较不可用。
+确认 Raw 表达 identity 并满足固定线性 `.X` 契约后，Raw baseline、Gain、Raw K-control 和 Raw-defined membership 可以按各自前提运行；它们仍需要 SVC 的重建标签、空间坐标或共同 ID。Moran 与 AUCell 按侧独立消费表达：一侧满足条件即可保存该侧的原生结果，不能把另一侧缺失写成零值。跨侧比较（例如 shared-gene Moran 或 Raw/SVC 共同窗口的差值）只有在比较涉及的两侧条件都满足时才可用；单侧结果仍应保留并标明比较不可用。
 
 ## Impact 参数来源
 
-样本 YAML 可在 `analysis_parameters.reconstruction_impact` 声明正式参数；显式调用参数/项目参数覆盖同名值。Notebook 使用相同 `effective_parameters` 与阶段对象，并展示 overrides。样本资源路径相对于样本 YAML；项目资源路径先按项目 YAML 解析。`columns.reconstruction` 默认 `SVC_cluster`，不是 `Level2` 或 de novo Leiden 的别名。
+样本 YAML 可在 `analysis_parameters.reconstruction_impact` 声明正式参数；项目 `analyses.reconstruction_impact` 覆盖样本同名值，显式 overrides 再覆盖项目。Notebook 调用统一解析器和 `effective_parameters`，分别展示 sample、project、override 与最终来源。多样本项目必须在 Notebook 显式选择 `SAMPLE_YAML`。样本资源路径相对于样本 YAML；项目资源路径相对于项目 YAML。`columns.reconstruction` 默认 `SVC_cluster`，不是 `Level2` 或 de novo Leiden 的别名。
 
 Anatomy 的 `anatomy_window_side_microns` 与 parent 默认 `window_side_microns` 独立，初始均为 40 μm。按 parent 设置的尺度及可选控制见 Impact 方法页。推荐尺度只提供支持诊断，不覆盖显式值。
 
-`expression.<side>.identity` 是上游来源声明字符串（如 measured_counts、reconstructed_expression）；`unknown` 表示尚未确认，不是根据数值自动检测的类别。`log1p_nonnegative` 是 `log1p` 的明确同义值，方法记录采用前者。
+`expression.<side>.identity` 是上游来源声明字符串（如 measured_expression、reconstructed_expression）；`unknown` 表示尚未确认，不是根据数值自动检测的类别。scale 不用于声明另一种可接受的正式输入；已知 identity 对应的计算契约固定记录为 `untransformed_nonnegative`。

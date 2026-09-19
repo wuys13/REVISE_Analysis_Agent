@@ -167,7 +167,7 @@ def test_derived_tables_keep_denominators_and_signed_delta():
 
 def test_partition_execution_valueerror_is_not_scientific_unavailability(tmp_path, monkeypatch):
     sample = _sample()
-    sample.config['expression'] = {'raw': {'identity': 'synthetic', 'scale': 'log1p'}}
+    sample.config['expression'] = {'raw': {'identity': 'synthetic'}}
     workflow = impact.ImpactWorkflow(sample, tmp_path, {'scopes': ['All']}, continue_on_error=True)
     monkeypatch.setattr(impact, 'compute_partitions', lambda *a, **k: (_ for _ in ()).throw(ValueError('internal partition bug')))
     workflow.run_stage('baseline')
@@ -178,9 +178,10 @@ def test_partition_execution_valueerror_is_not_scientific_unavailability(tmp_pat
 
 
 def test_raw_baseline_anatomy_uses_actual_partition_cohort(tmp_path):
-    sample = _sample()
+    sample = _sample(unknown_expression=True)
     workflow = impact.ImpactWorkflow(sample, tmp_path, {'scopes': ['All']})
     workflow.run_stage('input')
+    workflow.run_stage('baseline')
     workflow.state['partitions'] = {('raw', 'All'): pd.Series('0', index=sample.raw.obs_names[:3])}
     workflow.run_stage('support')
     workflow.run_stage('anatomy')
