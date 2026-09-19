@@ -1,5 +1,7 @@
 # 迁移与验收
 
+当前双仓库状态见[审阅证据与缺口](cross-repo-review/evidence-and-gaps.md)。以下按实施批次保留；旧测试数、Notebook/浏览器状态及上游描述不自动代表当前状态。最近交互验收位于文末，生产端后续变化以跨库核对为准。
+
 ## 来源与边界
 
 通用分析来源：REVISE `main@c83dc97d25b6d513b59cc301255e5bdc7e9c7cd9`。实施时复核 `revise-2.0@a26d36fe3b11d652f2cd9eeafb92e990518eb3ad` 的通用分析内容相同。
@@ -19,7 +21,7 @@ AUCell 增强与 Impact 来源：`reconstruction-impact@e82dd13ce013f3f120475e79
 | 科学工作台 | 连续 Impact Notebook，保留 `anatomy`、`partition`、`windows`、`state` 等中间变量 | 早期版本曾用独立 Jupyter 内核执行合成样本；当前源码的阅读展示后来已修订，需重新执行后再确认 |
 | 独立环境 | 目标目录 `.venv`，Python 3.11 与 `[dev,pathway]` | 不安装 REVISE；Scanpy 分群及 OmicVerse AUCell 实际执行 |
 
-首次迁移时目标仓库独立环境自动化测试 **39 项通过**；当时的旧版 Notebook（12 个代码单元）曾在目标路径实际执行，119 个本地报告链接与产物路径检查通过。随后 Notebook 的阶段展示和阅读文本发生了修改，因此这条历史执行证据不再证明当前源码与执行版 exact match；本轮不沿用它声称当前 Notebook 已执行，待根代理完成当前源码的执行与核对后再补充新的数字。其余测试包含 ID 不相交/重排、成员按 ID 对齐、无 Level2、常量基因、无通路交集/缺少 provider、共同窗口缺失不补零、State/Gain 成功和不可计算分支。通用迁入函数的签名与来源 AST 核对一致，计算函数体除可选 Squidpy 延迟导入外与来源一致；11 项通用回归通过。部分流程测试替换昂贵提供者或受控阈值；它们用于检查组合语义，不作为真实算法或生物学验证。
+首次迁移时目标仓库独立环境自动化测试 **39 项通过**；当时的旧版 Notebook（12 个代码单元）曾在目标路径实际执行，119 个本地报告链接与产物路径检查通过。随后 Notebook 的阶段展示和阅读文本发生了修改，因此这条历史执行证据不再证明当前源码与执行版 exact match；当时未沿用它声称新版 Notebook 已执行；后续执行结果见文末交互修订验收。其余测试包含 ID 不相交/重排、成员按 ID 对齐、无 Level2、常量基因、无通路交集/缺少 provider、共同窗口缺失不补零、State/Gain 成功和不可计算分支。通用迁入函数的签名与来源 AST 核对一致，计算函数体除可选 Squidpy 延迟导入外与来源一致；11 项通用回归通过。部分流程测试替换昂贵提供者或受控阈值；它们用于检查组合语义，不作为真实算法或生物学验证。
 
 ## 比较口径改变
 
@@ -31,7 +33,7 @@ AUCell 增强与 Impact 来源：`reconstruction-impact@e82dd13ce013f3f120475e79
 
 合成样本由 `scripts/create_example.py` 生成：Raw 240、SVC 210 个单位，600 个基因，部分共同 ID、两侧无 Level2。正式示例配置各侧独立抽样 180 个单位，显式 DEMO_PROGRAM；Moran 与通路流程成功，Impact 因缺少 Level2、窗口不足以稳定确定区域阈值等原因保持 `partial`。实际观察和参数记录在 `output/example/`。Notebook 执行版位于 `output/notebook/example/`，源码 Notebook 保持无输出。
 
-这些结果验证调用、计算和产物组织，不能支持真实生物学结论，也不能称为 P1 或全量验收。浏览器自动化未成功启动；报告完成静态链接检查与图像视检，未宣称完整浏览器交互验收。
+这些结果验证调用、计算和产物组织，不能支持真实生物学结论，也不能称为 P1 或全量验收。该首次迁移批次的浏览器自动化未成功启动；当时仅完成静态链接检查与图像视检。后续桌面/窄屏验收见文末，不再将此历史限制视为当前阻塞。
 
 ## P1 表达输入仍待确认
 
@@ -132,7 +134,7 @@ P2 Raw 来源 `REVISE/raw_data/Real_application/P2CRC_Xenium.h5ad`；临时 SVC 
 
 本轮重新核对了上游当前实现，但没有修改上游仓库。`REVISE/reconstruct.py:40-68` 现有两条 Raw 路径：显式 `raw_adata` 会在 pipeline 前复制快照；文件路径会在 finalize 阶段重新读取原 source，并检查读取前后的来源文件身份一致。`delivery.prepare_raw` 只补充 obs aliases 和 uns，不写 `.X`；发布的 SVC 来自 pipeline 结果。因此，本仓库继续把 Raw `.X` 称为上游交付的原始侧矩阵，把 SVC `.X` 称为重建侧矩阵，并保持只核验、不改写输入。
 
-sST 当前 runner `sc_svc_super_resolution_application.py:297-310` 将 parent-spot 校正后的 `SVC_X` 构造成 AnnData 保存，最终保存前没有再次 log；pipeline 内部仍包含 normalize，所以不能把它称为 raw counts。当前 `delivery.sample_document` 仍为该路径生成 `scale: unknown`：上游后续需按固定线性接口迁移已确认对象的配置、移除旧 scale 声明，并确认 Raw identity；分析端不增加新的 scale 选项。本轮证据只描述当前生产代码，不能反推历史 P2 文件已经确认，也不能据此放行 P2 Raw/SVC 表达分析。
+sST 当前 runner `sc_svc_super_resolution_application.py:297-310` 将 parent-spot 校正后的 `SVC_X` 构造成 AnnData 保存，最终保存前没有再次 log；pipeline 内部仍包含 normalize，所以不能把它称为 raw counts。该次核验时 `delivery.sample_document` 仍生成 `scale: unknown`，当时登记了上游迁移交接项。**后续跨库核对更新：** 上游当前 `expression.consumer_declaration` 已对确认的线性来源移除 scale，未知来源仍保留限制；这项代码迁移不再是未完成事项，见[当前协议](cross-repo-review/contract-and-code.md)。分析端不增加新的 scale 选项。本轮证据只描述当前生产代码，不能反推历史 P2 文件已经确认，也不能据此放行 P2 Raw/SVC 表达分析。
 
 本轮最终源码已完成以下验收。上面的旧 78 项测试与 10 个代码单元记录保留为历史；本表对应当前交互修订。
 

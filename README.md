@@ -6,6 +6,7 @@
 
 | 要做什么 | 入口 |
 | --- | --- |
+| 让 GPT 协同审阅 REVISE 与本仓库 | [双仓库审阅入口](docs/cross-repo-review/README.md) |
 | 理解仓库边界、核心设计 | [架构](docs/architecture.md) |
 | 准备输入或调用 API／批量命令 | [输入输出协议](docs/input-output.md) |
 | 找到某个科学问题对应的能力 | [分析能力索引](docs/analyses/README.md) |
@@ -32,7 +33,7 @@ python3.11 -m venv .venv
 
 脚本默认新建 `data/example_reconstruction/`；旧的 `data/example/` 保持原样，不再作为修订后流程的输入。若该新目录已随交付提供，可直接运行第二条。需要并存多个样本时可传入安全的单段名称，例如 `--sample-id example_reconstruction_2`；已有 `configs/example_project.yaml` 会保留，需要自行把它指向新样本，或用 `revise-analysis run` 直接运行该样本。合成数据只用于软件行为验证，不能支持真实生物学结论；阈值支持不足等预期限制会在结果中逐项列明。
 
-真实样本从 [sample.template.yaml](configs/sample.template.yaml) 和 [project.template.yaml](configs/project.template.yaml) 开始。P2 标签空间验收配置见 [p2_project.yaml](configs/p2_project.yaml)，分项证据见 [迁移与验证](docs/migration.md)。表达身份和尺度未知时仍能分析主标签与空间关系。
+真实样本从 [sample.template.yaml](configs/sample.template.yaml) 和 [project.template.yaml](configs/project.template.yaml) 开始。P2 标签空间验收配置见 [p2_project.yaml](configs/p2_project.yaml)，分项证据见 [迁移与验证](docs/migration.md)。表达来源未知时仍能分析主标签与空间关系；正式表达接口固定为未 log 的非负线性值。
 
 结果导航：`output/<sample>/index.json → <analysis>/result.json → tables/figures/report.html`。
 

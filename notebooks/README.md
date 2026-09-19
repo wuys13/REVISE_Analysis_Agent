@@ -43,3 +43,9 @@ PY
 ```
 
 小型合成 fixture 适合检查调用顺序。Raw `.X` 表示上游交付的原始侧矩阵，SVC `.X` 表示重建侧矩阵；本仓库不改写它们。正式 `.X` 契约固定为 finite、nonnegative、unlogged linear，真实样本必须根据上游证据声明 identity。确认的线性浮点值（包括小数和小于 1 的值）可以保留；旧 `log`/`log1p` 声明会被拒绝，`identity: unknown` 也不会放行 P2 表达消费者。缺少 Level2、某一侧已确认表达或 AUCell provider 时，只影响依赖它们的阶段，并保留不可用原因。正式结果与静态报告由批量运行器负责；报告只读取已保存结果。
+
+## 独立问题的 Notebook
+
+`01_reconstruction_impact.ipynb` 是 Impact 的连续主线，不是所有下游实验的唯一容器。Agent 可针对额外测试建立独立 Notebook，优先复用包内方法，并明确问题、输入来源及表达前提、预处理、比较范围、随机参数、资源、输出位置和解释限制。直接方法调用的前提与结果记录由 Notebook 显式承担；不修改输入，不将缺失补为零。稳定后再下沉计算和流程。
+
+上游已有[四方法 assembly 比较 Notebook](../../REVISE/reproduce/case/assembly_comparison.ipynb)，本轮只引用，不复制或迁移。它的共同 ID/基因比较是局部研究约定，不改变本库独立 Raw/SVC 规则。真实输入与协同审阅见[跨库入口](../docs/cross-repo-review/README.md)。

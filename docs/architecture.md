@@ -29,3 +29,9 @@ REVISE／上游交付 analysis-ready Raw 与统一 SVC；本仓库从这两个�
 关系图只读取本次 outputs 登记的保存表，由 Notebook/batch 共用展示函数生成。每张图登记到负责它的阅读 section；科学阶段产物与图登记分开，因此重绘不会伪装成重新计算。HTML 渲染只读取登记结果、图和底表；不能为了调整阅读结构重新调用科学方法或输入 loader。完整文件索引保留为审计入口。
 
 Impact 的交互状态是显式的：完整 `STAGE_ORDER` 始终出现在结果中，未运行或参数变化后失效的阶段是 `pending`。参数影响图定义每个阶段真正依赖的配置；失效沿该图传播，`run_stage` 同时检查前置状态。这里是该 workflow 的明确依赖，不扩展成通用调度框架。Notebook 运行前重新解析 sample/project/override 并要求先应用不一致的参数，避免用新参数解释旧产物。
+
+## Agent 使用与扩展
+
+本仓库提供给 Agent 调用的分析能力，不实现 Agent 自动编排。已有问题走正式 API/CLI/Notebook；新问题可建立独立 Notebook，复用 `methods/` 并显式说明前提、预处理、范围、参数和输出。成熟计算再进入稳定 `analyses/`、现有 runner 与结果协议。直接调用方法不自动获得正式流程的全部能力检查、错误记录和 manifest 保障。
+
+Impact 保持连续主线，其他独立科学问题不必加入其中。上游已有的 assembly 比较本轮只链接复用，不复制或改变归属。双向交付与代码索引见[协同审阅入口](cross-repo-review/README.md)。

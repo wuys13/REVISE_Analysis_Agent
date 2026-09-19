@@ -4,7 +4,7 @@
 
 | 名称 | 回答什么 | 需要什么 | 结果与说明 |
 | --- | --- | --- | --- |
-| `reconstruction_impact` | 表征、成员、局部状态与空间特征发生什么变化 | Raw/SVC 表达；分群用 broad 标签；空间部分用坐标与尺度 | [Impact 主线](reconstruction-impact.md)，分群、区域、Moran、通路及诊断图 |
+| `reconstruction_impact` | 表征、成员、局部状态与空间特征发生什么变化 | SVC 主标签、scope 标签及空间坐标/尺度支持标签空间链；表达仅为相应 baseline/分子分支前提 | [Impact 主线](reconstruction-impact.md)，分群、区域、Moran、通路及诊断图 |
 | `spatial_autocorrelation` | 基因在各自原生空间单位上的自相关 | 各侧表达与空间坐标 | [Moran](spatial-autocorrelation.md)，每侧基因表和比较图 |
 | `pathway_activity` | 基因集覆盖和通路评分分布有什么差异 | 显式基因集、AUCell 可选依赖 | [通路活性](pathway-activity.md)，覆盖、原生单位分数和分布图 |
 
@@ -28,4 +28,8 @@
 | 生物学／聚类指标 | `methods.biological_metrics`、`methods.metrics` | 具体函数文档说明输入标签、图和意义 |
 | 保留的旧通用分析 | `methods.unsupervised`、`methods.spatial_autocorrelation` | 原有单对象工具；后者需 `[spatial]`，不等同新正式 Moran 入口 |
 
-新增分析：先用函数与主 Notebook 探索；需要跨样本复用时下沉稳定计算，再注册一个明确分析入口。说明它的问题、输入、参数、结果与解释限制即可，无需 Agent registry 或通用证据框架。
+## 从独立探索到稳定分析
+
+先选择现有正式流程或通用函数。新科学问题可用独立 Notebook 探索，说明输入来源、表达前提、预处理、单位/基因范围、资源、随机参数、输出与局限；不必追加到 Impact 主 Notebook。通用函数不自动执行正式流程的全部前提检查或结果登记。
+
+成熟计算复用 `methods/`；需要重复运行的问题组合进入 `analyses/`，接入 `runner.ANALYSES` 及现有参数、状态、保存和阅读协议，并补充相应行为测试。临时实验无需提前注册。历史 Recoverability/TLS 等仍是扩展方向，已有 CCI/轨迹工具也不等于真实流程已完成。上游四方法比较和跨库职责见[审阅入口](../cross-repo-review/README.md)。无需 Agent registry 或通用证据框架。
