@@ -10,7 +10,8 @@ Moran tables is a separate, explicit gene-level reading step.
 The default graph is a deterministic symmetric binary six-nearest-neighbor
 graph with self edges removed. Ties follow input order. For each gene, the
 calculation works on a copy of the object, applies library-size normalization
-to a target sum of 10,000 and `log1p`, and then computes
+to a target sum of 10,000 and `log1p` for declared untransformed input (already
+log1p input is used without a second transformation), and then computes
 
 \[
 I = \frac{n}{W}\frac{\sum_{ij}w_{ij}(x_i-\bar{x})(x_j-\bar{x})}
@@ -48,3 +49,5 @@ missing optional dependencies are reported with a status and reason. A saved
 batch result may therefore be `partial` while the other side or another
 analysis remains usable. The static report reads these saved tables; it never
 opens H5AD files or recomputes Moran's I.
+
+Impact runs this native calculation per configured scope, retains each side’s full gene table, and writes a separate shared-gene comparison with actual unit and gene denominators. Unknown expression identity/scale leaves the component unavailable.

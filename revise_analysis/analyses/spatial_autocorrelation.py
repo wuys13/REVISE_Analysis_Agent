@@ -7,10 +7,10 @@ from typing import Any
 from ._shared import analysis_parameters, deterministic_subset, save_table, unavailable
 
 
-def compute_moran(adata: Any, *, spatial_key: str, n_neighbors: int = 6):
+def compute_moran(adata: Any, *, spatial_key: str, n_neighbors: int = 6, transformation_state: str = "untransformed_nonnegative"):
     """Expose the reusable Moran calculation for notebooks."""
     from revise_analysis.methods.spatial import compute_moran as implementation
-    return implementation(adata, spatial_key=spatial_key, n_neighbors=n_neighbors)
+    return implementation(adata, spatial_key=spatial_key, n_neighbors=n_neighbors, transformation_state=transformation_state)
 
 
 def run(sample: Any, output_dir: Path, parameters: dict | None = None) -> dict:
@@ -25,9 +25,12 @@ def run(sample: Any, output_dir: Path, parameters: dict | None = None) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     outputs, missing = {}, []
     for side in ("raw", "svc"):
+        if reason := sample.expression_unavailable(side):
+            unavailable(f"moran:{side}", reason, missing)
+            continue
         try:
             adata = deterministic_subset(getattr(sample, side), effective["sample_n_units"], effective["random_state"] + (side == "svc"))
-            table = compute_moran(adata, spatial_key=sample.spatial_key, n_neighbors=effective["moran_n_neighbors"])
+            table = compute_moran(adata, spatial_key=sample.spatial_key, n_neighbors=effective["moran_n_neighbors"], transformation_state=sample.expression(side)["scale"])
             save_table(table, output_dir, f"tables/moran_{side}.csv", outputs)
             record_uncomputed(table, side, missing)
         except (ImportError, KeyError, ValueError) as exc:
@@ -45,7 +48,7 @@ def _write_figures(output_dir: Path, outputs: dict, missing: list[dict]) -> None
             table = output_dir / f"tables/moran_{side}.csv"
             if table.exists():
                 relative = f"figures/moran_{side}.png"
-                plot_moran_distribution(pd.read_csv(table), output_dir / relative, title=f"{side.upper()} Moran I")
+                plot_moran_distribution(pd.read_csv(table), output_dir / relative, title=f"{side.upper()} 原生 Moran I 分布")
                 outputs[relative] = relative
     except ImportError as exc:
         unavailable("figures", str(exc), missing)

@@ -11,10 +11,10 @@ def plot_pathway_scores(scores: pd.Series, destination: Path, *, title: str | No
     values = pd.to_numeric(scores, errors="coerce").dropna()
     figure, axis = _pyplot().subplots()
     if values.empty:
-        axis.text(.5, .5, "No computable AUCell scores", transform=axis.transAxes,
+        axis.text(.5, .5, "没有可计算的 AUCell 分数", transform=axis.transAxes,
                   ha="center", va="center", color="#667")
     else:
         axis.hist(values, bins=min(40, max(5, len(values))))
-    axis.set_xlabel(scores.name or "AUCell score")
-    axis.set_title(title or "Pathway activity distribution")
+    axis.set_xlabel(scores.name or "AUCell 分数")
+    axis.set_title(title or "通路活性分布")
     return _save(figure, destination)

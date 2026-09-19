@@ -1,29 +1,27 @@
 schema_version: 1
 output_dir: ../output
 samples:
-  - ../data/your_sample/sample.yaml
+- ../data/your_sample/sample.yaml
 analyses:
   reconstruction_impact:
+    scopes: [Fibroblast]
     sample_n_units: 30000
     random_state: 42
     membership_same_units: false
+    raw_k_control: false
+    matched_k_resolutions: [0.2, 0.4, 0.6, 0.8, 1.0]
+    svc_leiden_baseline: false
     resolution: 0.5
     n_top_genes: 2000
-    # Physical side length; converted through sample spatial.microns_per_coordinate.
     window_side_microns: 40.0
+    # Optional per-parent values override the common default above.
+    # parent_window_side_microns: {Fibroblast: 40.0}
+    window_scale_candidates_microns: [16, 24, 32, 40, 56, 80]
     min_window_units: 4
     n_window_draws: 200
     region_n_bootstrap: 500
     geneset_path: ../resources/h.all.v2025.1.Hs.symbols.gmt
-    gene_set_names: [HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION]
+    gene_set_names:
+    - HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION
     pathway_auc_threshold: 0.01
-  spatial_autocorrelation:
-    sample_n_units: 30000
-    random_state: 42
-    moran_n_neighbors: 6
-  pathway_activity:
-    sample_n_units: 30000
-    random_state: 42
-    geneset_path: ../resources/h.all.v2025.1.Hs.symbols.gmt
-    gene_set_names: [HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION]
-    pathway_auc_threshold: 0.01
+    anatomy_window_side_microns: 40.0

@@ -23,16 +23,12 @@ workflow does not replace that failure with a different threshold or scoring
 method.
 
 Coverage is a property of the object and may differ between Raw and SVC. A
-gene set with no overlap, an unavailable provider, or a provider failure is
-marked unavailable with its reason. The workflow does not substitute a rank
+gene set with no overlap, an unavailable provider, is marked unavailable with its reason. An unexpected provider failure remains an execution error, including its traceback. The workflow does not substitute a rank
 score, fill missing scores with zero, or turn coverage into a biological
 validation claim. A score distribution and spatial field are descriptive
 outputs that need the declared resource and coverage to be interpreted.
 
-The continuous notebook uses `DEMO_PROGRAM` (`G0` through `G49`) for the
-synthetic fixture. Set `GENESET_PATH` and optionally `GENESET_NAMES` to read a
-declared GMT through `read_gene_sets`; the selected resource and coverage stay
-visible in the notebook metadata.
+The notebook uses the formal sample/project gene-set parameters, with explicit overrides displayed. Synthetic DEMO_PROGRAM belongs only to the example configuration. Impact scores each side’s fixed scoring cohort once per program and derives all spatial summaries from saved unit scores; changing Region count never triggers another scoring call.
 
 ## Availability boundary
 

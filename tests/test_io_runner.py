@@ -39,8 +39,9 @@ def test_unknown_input_scale_is_not_guessed(sample_yaml):
     config = yaml.safe_load(sample_yaml.read_text())
     config["expression"]["scale"] = "unknown"
     sample_yaml.write_text(yaml.safe_dump(config))
-    with pytest.raises(ValueError, match="verified linear"):
-        load_sample(sample_yaml)
+    sample = load_sample(sample_yaml)
+    assert sample.expression("svc")["scale"] == "unknown"
+    assert sample.expression_unavailable("svc") is not None
 
 
 def test_failure_cannot_publish_stale_success(sample_yaml, monkeypatch, tmp_path):
@@ -106,7 +107,7 @@ def test_traversal_sample_id_rejected(sample_yaml):
         load_sample(sample_yaml)
 
 
-def test_invalid_scale_rerun_replaces_old_success(sample_yaml, monkeypatch, tmp_path):
+def test_invalid_declaration_rerun_replaces_old_success(sample_yaml, monkeypatch, tmp_path):
     import revise_analysis.runner as runner
     original = runner.importlib.import_module
     fake = SimpleNamespace(run=lambda *args: {"status": "succeeded", "outputs": {}, "parameters": {}})
@@ -114,7 +115,7 @@ def test_invalid_scale_rerun_replaces_old_success(sample_yaml, monkeypatch, tmp_
     output = tmp_path / "output"
     run_analysis(sample_yaml, "spatial_autocorrelation", output)
     config = yaml.safe_load(sample_yaml.read_text())
-    config["expression"]["scale"] = "unknown"
+    config["expression"]["svc"] = "not a mapping"
     sample_yaml.write_text(yaml.safe_dump(config))
     project = tmp_path / "project.yaml"
     project.write_text(yaml.safe_dump({"schema_version": 1, "samples": [sample_yaml.name], "analyses": {"spatial_autocorrelation": {}}, "output_dir": "output"}))
@@ -134,3 +135,32 @@ def test_corrupt_generated_index_is_rebuilt(sample_yaml, monkeypatch, tmp_path):
     result = run_analysis(sample_yaml, "spatial_autocorrelation", output)
     assert result["status"] == "succeeded"
     assert json.loads((output / "sample/index.json").read_text())["sample_id"] == "sample"
+
+
+def test_per_side_expression_contract_and_label_only_input(sample_yaml):
+    import anndata as ad
+    config = yaml.safe_load(sample_yaml.read_text())
+    config['expression'] = {
+        'raw': {'identity': 'measured_counts', 'scale': 'untransformed_nonnegative'},
+        'svc': {'identity': 'unknown', 'scale': 'unknown'},
+    }
+    svc = ad.read_h5ad(sample_yaml.parent / 'SVC.h5ad')
+    svc.X = None
+    svc.obs['SVC_cluster'] = ['r0', 'r1']
+    svc.write_h5ad(sample_yaml.parent / 'SVC.h5ad')
+    sample_yaml.write_text(yaml.safe_dump(config))
+    sample = load_sample(sample_yaml)
+    assert sample.expression_unavailable('raw') is None
+    assert 'unknown' in sample.expression_unavailable('svc')
+    assert sample.labels('svc', sample.reconstruction_key).tolist() == ['r0', 'r1']
+    assert sample.svc.X is None
+
+
+def test_gene_set_resource_rejects_ambiguous_rows(tmp_path):
+    resource = tmp_path / 'bad.gmt'
+    resource.write_text('A\tdesc\tG1\nA\tdesc\tG2\n')
+    with pytest.raises(ValueError, match='Duplicate'):
+        read_gene_sets(resource)
+    resource.write_text('A\tdesc\n')
+    with pytest.raises(ValueError, match='Invalid GMT row'):
+        read_gene_sets(resource)

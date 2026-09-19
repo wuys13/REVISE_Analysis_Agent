@@ -99,12 +99,24 @@ def select_window_scale(coordinates: pd.DataFrame, *, candidate_window_sides: Se
     sensitivity = pd.DataFrame(rows)
     if not (sensitivity.n_valid_windows > 0).any():
         return {"status": "insufficient_support", "window_side_length": None, "min_parent_units": min_parent_units}, sensitivity
-    x, y = np.log(sensitivity.window_side_length.to_numpy()), sensitivity.retained_parent_unit_fraction.to_numpy()
+    eligible = sensitivity.loc[sensitivity.n_valid_windows > 0].copy()
+    sensitivity["knee_distance"] = np.nan
+    if eligible.shape[0] < 3 or not np.isfinite(eligible.retained_parent_unit_fraction).all():
+        return {"status": "no_clear_recommendation", "window_side_length": None,
+                "min_parent_units": min_parent_units, "reason": "degenerate_support_curve"}, sensitivity
+    x, y = np.log(eligible.window_side_length.to_numpy()), eligible.retained_parent_unit_fraction.to_numpy()
     denominator = float(np.hypot(y[-1] - y[0], x[-1] - x[0]))
     distances = np.zeros_like(x) if denominator == 0 else np.abs((y[-1] - y[0]) * x - (x[-1] - x[0]) * y + x[-1] * y[0] - y[-1] * x[0]) / denominator
-    sensitivity["knee_distance"] = distances
-    maximum = sensitivity.knee_distance.max()
-    side = float(sensitivity.loc[np.isclose(sensitivity.knee_distance, maximum), "window_side_length"].min())
+    sensitivity.loc[eligible.index, "knee_distance"] = distances
+    maximum = float(np.max(distances))
+    # A straight/flat occupancy curve has no identifiable interior elbow.  It
+    # is still a perfectly valid support audit and must not invalidate a
+    # separately configured analysis scale.
+    scale = max(1.0, float(np.ptp(y)))
+    if not np.isfinite(maximum) or maximum <= np.finfo(float).eps * scale * 32:
+        return {"status": "no_clear_recommendation", "window_side_length": None,
+                "min_parent_units": min_parent_units, "reason": "flat_support_curve"}, sensitivity
+    side = float(eligible.loc[np.isclose(distances, maximum), "window_side_length"].min())
     return {"status": "ok", "window_side_length": side, "min_parent_units": min_parent_units}, sensitivity
 
 
@@ -164,6 +176,94 @@ def assign_anatomy_candidates(window_assignments: pd.DataFrame, level1_labels: p
                      "normal_candidate": int(bool(normal_units)),
                      "union_candidate": int(bool(tumor_units)) + int(bool(normal_units)),
                      "level1_region": region})
+    return pd.DataFrame(rows)
+
+
+def assign_points_to_anatomy(
+    coordinates: pd.DataFrame,
+    anatomy_windows: pd.DataFrame,
+    *,
+    anatomy_window_side_length: float,
+    origin: tuple[float, float],
+    region_column: str = "level1_region",
+) -> pd.DataFrame:
+    """Assign native points to independently constructed Anatomy windows.
+
+    Assignment is based on each observation's coordinate, never on shared IDs,
+    window centres, polygon overlap, or coincident parent ``window_id`` values.
+    A point falling in an Anatomy-grid cell absent from ``anatomy_windows`` is
+    retained with ``anatomy_region='Unknown'`` and explicit coverage fields.
+    """
+    required = {"window_id", region_column}
+    if missing := required - set(anatomy_windows.columns):
+        raise KeyError(f"anatomy_windows missing columns: {sorted(missing)}")
+    if anatomy_windows.window_id.astype(str).duplicated().any():
+        raise ValueError("anatomy_windows must contain one row per window_id")
+    assigned = assign_square_windows(
+        coordinates, window_side_length=anatomy_window_side_length, origin=origin
+    )
+    lookup = anatomy_windows.assign(
+        window_id=anatomy_windows.window_id.astype(str)
+    ).set_index("window_id")[region_column]
+    result = assigned.loc[:, ["x", "y", "window_id"]].rename(
+        columns={"window_id": "anatomy_window_id"}
+    )
+    mapped = result.anatomy_window_id.map(lookup)
+    result["anatomy_covered"] = mapped.notna()
+    result["anatomy_region"] = mapped.astype("string").fillna("Unknown")
+    return result
+
+
+def aggregate_parent_anatomy(
+    parent_window_assignments: pd.DataFrame,
+    point_anatomy: pd.DataFrame,
+    *,
+    categories: Sequence[str] = ("Tumor", "Normal", "Interface", "Other", "Unknown"),
+) -> pd.DataFrame:
+    """Summarize point-level Anatomy composition inside native parent windows.
+
+    Fractions use every native point as their denominator, so absent Anatomy
+    coverage remains visible as ``Unknown`` rather than disappearing.  A
+    dominant category is reported only when unique; tied maxima are recorded
+    explicitly in ``anatomy_tied`` and ``anatomy_dominant`` is ``"Tie"``.
+    """
+    if "window_id" not in parent_window_assignments:
+        raise KeyError("parent_window_assignments must contain window_id")
+    if "anatomy_region" not in point_anatomy:
+        raise KeyError("point_anatomy must contain anatomy_region")
+    if not parent_window_assignments.index.is_unique or not point_anatomy.index.is_unique:
+        raise ValueError("parent and Anatomy point tables must have unique unit IDs")
+    if set(parent_window_assignments.index) != set(point_anatomy.index):
+        raise ValueError("parent and Anatomy point tables must contain exactly the same unit IDs")
+    ordered_categories = tuple(dict.fromkeys(str(value) for value in categories))
+    if "Unknown" not in ordered_categories:
+        ordered_categories += ("Unknown",)
+    regions = point_anatomy.anatomy_region.reindex(parent_window_assignments.index).astype("string").fillna("Unknown")
+    unexpected = sorted(set(regions.astype(str)) - set(ordered_categories))
+    if unexpected:
+        raise ValueError(f"Unexpected Anatomy categories: {unexpected}")
+    rows = []
+    for window_id, frame in parent_window_assignments.groupby("window_id", sort=True):
+        values = regions.reindex(frame.index).astype(str)
+        counts = values.value_counts().reindex(ordered_categories, fill_value=0).astype(int)
+        n_units = int(values.size)
+        maximum = int(counts.max()) if n_units else 0
+        tied = [category for category in ordered_categories if maximum and counts[category] == maximum]
+        dominant = tied[0] if len(tied) == 1 else "Tie" if tied else "Unknown"
+        row = {
+            "window_id": str(window_id),
+            "n_units": n_units,
+            "n_anatomy_covered": int(n_units - counts.get("Unknown", 0)),
+            "n_anatomy_unknown": int(counts.get("Unknown", 0)),
+            "anatomy_dominant": dominant,
+            "anatomy_tied": len(tied) > 1,
+            "anatomy_tied_categories": "|".join(tied) if len(tied) > 1 else "",
+        }
+        for category, count in counts.items():
+            slug = category.lower().replace(" ", "_").replace("/", "_").replace("-", "_")
+            row[f"anatomy_{slug}_n"] = int(count)
+            row[f"anatomy_{slug}_fraction"] = float(count / n_units) if n_units else np.nan
+        rows.append(row)
     return pd.DataFrame(rows)
 
 

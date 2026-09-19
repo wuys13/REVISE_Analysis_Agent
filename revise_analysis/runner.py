@@ -58,7 +58,7 @@ def resolve_parameters(parameters: dict | None, base: Path) -> dict:
     resource = effective.get("geneset_path")
     names = effective.get("gene_set_names")
     if resource is not None:
-        if "gene_sets" in effective:
+        if effective.get("gene_sets") is not None:
             raise ValueError("Use either gene_sets or geneset_path, not both")
         effective["geneset_path"] = str(resolve_path(resource, base))
     elif names is not None:
@@ -122,7 +122,10 @@ def run_analysis(sample_yaml, analysis: str, output_dir, parameters: dict | None
                 result["parameters"] = effective
                 sample = load_sample(source)
                 implementation = importlib.import_module(f"revise_analysis.analyses.{analysis}")
-                computed = implementation.run(sample, staging, effective)
+                if analysis == "reconstruction_impact":
+                    computed = implementation.run(sample, staging, effective, continue_on_error=True)
+                else:
+                    computed = implementation.run(sample, staging, effective)
                 if computed.get("status") not in STATUSES:
                     raise ValueError("Analysis must return an explicit supported status")
                 result.update(computed)

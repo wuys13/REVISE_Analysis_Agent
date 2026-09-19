@@ -1,0 +1,24 @@
+schema_version: 1
+sample_id: example_reconstruction
+files:
+  raw: raw.h5ad
+  svc: SVC.h5ad
+expression:
+  raw:
+    matrix: X
+    identity: synthetic_expression
+    scale: untransformed_nonnegative
+  svc:
+    matrix: X
+    identity: synthetic_expression
+    scale: untransformed_nonnegative
+columns:
+  broad: Level1
+  subtype: Level2
+  reconstruction: SVC_cluster
+label_aliases:
+  Mono_Macro: Mono/Macro
+spatial:
+  key: spatial
+  unit: micron
+  microns_per_coordinate: 1.0

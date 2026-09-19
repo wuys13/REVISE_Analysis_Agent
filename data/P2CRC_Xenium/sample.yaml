@@ -1,0 +1,57 @@
+schema_version: 1
+sample_id: P2CRC_Xenium
+files:
+  raw: raw.h5ad
+  svc: SVC.h5ad
+columns:
+  broad: Level1
+  subtype: Level2
+  reconstruction: SVC_cluster
+expression:
+  raw:
+    matrix: X
+    identity: unknown
+    scale: unknown
+  svc:
+    matrix: X
+    identity: unknown
+    scale: unknown
+label_aliases:
+  Mono_Macro: Mono/Macro
+spatial:
+  key: spatial
+  unit: pixel
+  microns_per_coordinate: 0.2125
+provenance:
+  raw:
+    source_path: /Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE/raw_data/Real_application/P2CRC_Xenium.h5ad
+    sha256: 2e0f31756e6dc2f84d258d48ec02ee38b1c188e815eb1910536f348afabaa840
+  svc:
+    source_path: /Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE/results/sc_SVC_case/P2CRC_Xenium/Fibroblast/spatial.h5ad
+    sha256: d20c8c7bc72c93146e332674f8241c2d550a3b0e2b0c0b817dca3a9f923edc15
+metadata:
+  svc_carrier: temporary spatial-label reconstruction carrier
+  confirmed_capabilities:
+  - SVC_cluster
+  - spatial coordinates
+  unconfirmed_capabilities:
+  - Raw expression identity and transformation
+  - SVC expression identity and transformation
+  notes: Original bytes copied. No expr.h5ad reading, projection, or legacy loader.
+    Replace with formal single SVC through same interface and rerun.
+analysis_parameters:
+  reconstruction_impact:
+    scopes:
+    - Fibroblast
+    random_state: 42
+    anatomy_window_side_microns: 40.0
+    window_side_microns: 40.0
+    min_window_units: 4
+    n_window_draws: 200
+    region_n_bootstrap: 500
+    sample_n_units: 30000
+    membership_same_units: true
+    geneset_path: ../../resources/h.all.v2025.1.Hs.symbols.gmt
+    gene_set_names:
+    - HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION
+    pathway_auc_threshold: 0.01

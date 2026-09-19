@@ -1,0 +1,6 @@
+schema_version: 1
+output_dir: ../output
+samples:
+- ../data/P2CRC_Xenium/sample.yaml
+analyses:
+  reconstruction_impact: {}

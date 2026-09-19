@@ -20,7 +20,7 @@ def _require_cellphonedb_dependencies():
     except ImportError as exc:
         raise ImportError(
             "CellPhoneDB analysis requires OmicVerse and CellPhoneDB; install "
-            'them with `python -m pip install "revise-svc[cci]"`.'
+            'them with `python -m pip install "revise-analysis-agent[cci]"`.'
         ) from exc
     return omicverse
 

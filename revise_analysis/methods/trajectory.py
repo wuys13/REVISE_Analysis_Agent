@@ -15,7 +15,7 @@ def _require_omicverse():
     except ImportError as exc:
         raise ImportError(
             "Palantir trajectory inference requires OmicVerse; install it with "
-            '`python -m pip install "revise-svc[trajectory]"`.'
+            '`python -m pip install "revise-analysis-agent[trajectory]"`.'
         ) from exc
     return omicverse
 

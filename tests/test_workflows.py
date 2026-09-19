@@ -19,13 +19,14 @@ def _sample() -> Sample:
     raw.obsm["spatial"] = np.c_[np.arange(6), np.arange(6)]
     svc = raw[:5].copy()
     svc.X = svc.X + 1
-    return Sample("unit", raw, svc, {"label_aliases": {"Mono_Macro": "Mono/Macro"}, "spatial": {"microns_per_coordinate": 1}}, Path("sample.yaml"))
+    svc.obs["SVC_cluster"] = [str(i % 2) for i in range(svc.n_obs)]
+    return Sample("unit", raw, svc, {"expression": {side: {"identity": "test_expression", "scale": "untransformed_nonnegative"} for side in ("raw", "svc")}, "label_aliases": {"Mono_Macro": "Mono/Macro"}, "spatial": {"microns_per_coordinate": 1}}, Path("sample.yaml"))
 
 
 def test_impact_keeps_sides_independent_and_membership_is_explicit(tmp_path, monkeypatch):
     sample = _sample()
 
-    def fake_partition(adata, *, resolution, n_top_genes, random_state):
+    def fake_partition(adata, *, resolution, n_top_genes, random_state, **kwargs):
         labels = pd.Series([str(i % 2) for i in range(adata.n_obs)], index=adata.obs_names, name="partition")
         return {"labels": labels, "summary": {"n_units": adata.n_obs, "n_clusters": 2}}
 
@@ -169,3 +170,12 @@ def test_artifact_name_collisions_are_explicit(tmp_path):
         impact.run(_sample(), tmp_path, {"scopes": ["A/B", "A_B"]})
     with pytest.raises(ValueError, match="collide"):
         pathways.run(_sample(), tmp_path, {"gene_sets": {"A/B": ["g1"], "A_B": ["g2"]}})
+
+
+def test_unexpected_pathway_provider_valueerror_is_not_unavailable(tmp_path, monkeypatch):
+    import pytest
+    def broken_provider(*args, **kwargs):
+        raise ValueError('provider execution bug')
+    monkeypatch.setattr(pathways, 'compute_pathway_scores', broken_provider)
+    with pytest.raises(ValueError, match='provider execution bug'):
+        pathways.run(_sample(), tmp_path, {'gene_sets': {'Test': ['g1']}})

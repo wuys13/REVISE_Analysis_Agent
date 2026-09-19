@@ -34,7 +34,7 @@ def _require_gseapy():
     except ImportError as exc:
         raise ImportError(
             "gseapy is required for pathway enrichment features; "
-            'install it with `python -m pip install "revise-svc[pathway]"`.'
+            'install it with `python -m pip install "revise-analysis-agent[pathway]"`.'
         ) from exc
     return gseapy
 

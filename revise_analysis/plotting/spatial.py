@@ -7,14 +7,14 @@ import pandas as pd
 from .impact import _pyplot, _save
 
 
-def plot_moran_distribution(moran: pd.DataFrame, destination: Path, *, title: str = "Moran I") -> Path:
+def plot_moran_distribution(moran: pd.DataFrame, destination: Path, *, title: str = "Moran I 分布") -> Path:
     if "moran" not in moran:
         raise ValueError("Moran table requires a moran column")
     values = pd.to_numeric(moran["moran"], errors="coerce").dropna()
     plt = _pyplot()
     figure, axis = plt.subplots()
     if values.empty:
-        axis.text(.5, .5, "No computable Moran I values", transform=axis.transAxes,
+        axis.text(.5, .5, "没有可计算的 Moran I 数值", transform=axis.transAxes,
                   ha="center", va="center", color="#667")
     else:
         axis.hist(values, bins=min(40, max(5, len(values))))

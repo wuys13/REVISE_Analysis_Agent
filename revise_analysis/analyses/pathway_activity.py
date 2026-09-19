@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 import pandas as pd
 
+from revise_analysis.methods.errors import PrerequisiteUnavailable
+
 from ._shared import analysis_parameters, deterministic_subset, save_json, save_table, unavailable
 
 
@@ -30,6 +32,9 @@ def run(sample: Any, output_dir: Path, parameters: dict | None = None) -> dict:
         unavailable("pathway_resource", resource_error, missing)
         return {"status": "skipped", "parameters": effective, "outputs": outputs, "unavailable": missing}
     for side in ("raw", "svc"):
+        if reason := sample.expression_unavailable(side):
+            unavailable(f"pathway:{side}", reason, missing)
+            continue
         adata = deterministic_subset(getattr(sample, side), effective["sample_n_units"], effective["random_state"] + (side == "svc"))
         for name, genes in gene_sets.items():
             component = f"pathway:{side}:{name}"
@@ -44,7 +49,7 @@ def run(sample: Any, output_dir: Path, parameters: dict | None = None) -> dict:
             except ImportError as exc:
                 # Absence of the optional AUCell provider leaves other pathways/sides usable.
                 unavailable(component, str(exc), missing)
-            except ValueError as exc:
+            except PrerequisiteUnavailable as exc:
                 unavailable(component, f"skipped: {exc}", missing)
     if metadata:
         save_json(metadata, output_dir, "tables/pathway_metadata.json", outputs)
@@ -93,7 +98,9 @@ def _write_figures(output_dir: Path, outputs: dict, missing: list[dict]) -> None
         for table in (output_dir / "tables").glob("pathway_*.csv"):
             relative = f"figures/{table.stem}.png"
             score = pd.read_csv(table, index_col=0).iloc[:, 0]
-            plot_pathway_scores(score, output_dir / relative, title=table.stem.replace("_", " "))
+            side = "Raw" if "_raw_" in table.stem else "SVC"
+            program = table.stem.split(f"pathway_{side.lower()}_", 1)[-1]
+            plot_pathway_scores(score, output_dir / relative, title=f"{side} · {program} 通路活性分布")
             outputs[relative] = relative
     except ImportError as exc:
         unavailable("figures", str(exc), missing)

@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
 from scipy.sparse import issparse, SparseEfficiencyWarning
+from .errors import PrerequisiteUnavailable
 from sklearn.metrics import adjusted_mutual_info_score, adjusted_rand_score, f1_score, mutual_info_score, normalized_mutual_info_score
 
 
@@ -25,14 +26,25 @@ class PartitionComparison:
     assignments: pd.DataFrame
 
 
+@dataclass(frozen=True)
+class PreparedPartition:
+    """A fixed cohort, feature set, PCA and neighbour graph for Leiden sweeps."""
+
+    work: object
+    embedding: pd.DataFrame | None
+    summary: dict
+    random_state: int
+    transformation_state: str
+
+
 def _validate_expression(adata) -> None:
     if adata.n_obs == 0 or adata.n_vars == 0 or adata.X is None:
-        raise ValueError("Expression AnnData must have nonempty observations, genes and X")
+        raise PrerequisiteUnavailable("Expression AnnData must have nonempty observations, genes and X")
     if not adata.obs_names.is_unique or not adata.var_names.is_unique:
-        raise ValueError("Observation and gene identifiers must be unique")
+        raise PrerequisiteUnavailable("Observation and gene identifiers must be unique")
     values = adata.X.data if issparse(adata.X) else np.asarray(adata.X)
     if not np.isfinite(values).all() or (values < 0).any():
-        raise ValueError("Expression values must be finite and nonnegative")
+        raise PrerequisiteUnavailable("Expression values must be finite and nonnegative")
 
 
 def _as_labels(values: pd.Series | Sequence[Hashable], name: str) -> pd.Series:
@@ -102,15 +114,48 @@ def compare_membership(raw_labels: pd.Series | Sequence[Hashable], svc_labels: p
     return compare_partitions(raw.loc[common], svc.reindex(common), comparison_edge="raw_to_svc_membership")
 
 
-def compute_partition(adata, *, resolution: float = 0.5, n_top_genes: int = 2000, random_state: int = 42, min_genes: int = 0, min_cells: int = 0) -> dict:
-    """Run an independent Leiden partition without altering the input AnnData."""
-    if (not np.isfinite(resolution) or resolution <= 0 or type(n_top_genes) is not int or n_top_genes < 1
-            or type(random_state) is not int or type(min_genes) is not int or min_genes < 0
+_TRANSFORMATION_ALIASES = {
+    "untransformed": "untransformed_nonnegative",
+    "untransformed_nonnegative": "untransformed_nonnegative",
+    "log1p": "log1p_nonnegative",
+    "log1p_nonnegative": "log1p_nonnegative",
+}
+
+
+def _transformation_state(value: str) -> str:
+    try:
+        return _TRANSFORMATION_ALIASES[str(value)]
+    except KeyError as exc:
+        raise ValueError(
+            "transformation_state must be untransformed_nonnegative or log1p_nonnegative"
+        ) from exc
+
+
+def prepare_partition_graph(
+    adata,
+    *,
+    n_top_genes: int = 2000,
+    random_state: int = 42,
+    min_genes: int = 0,
+    min_cells: int = 0,
+    transformation_state: str = "untransformed_nonnegative",
+) -> PreparedPartition:
+    """Prepare one immutable cohort/feature/PCA/kNN basis for Leiden runs.
+
+    Untransformed nonnegative values are normalized and logged on their full
+    gene axis before the dispersion-based ``seurat`` HVG method is applied.
+    This state does not assert integer counts, so it must not imply the
+    count-model ``seurat_v3`` method. Already log1p-transformed values use the
+    same HVG method without a second transformation.
+    """
+    if (type(n_top_genes) is not int or n_top_genes < 1 or type(random_state) is not int
+            or type(min_genes) is not int or min_genes < 0
             or type(min_cells) is not int or min_cells < 0):
-        raise ValueError("resolution/n_top_genes/min_genes/min_cells are invalid")
+        raise ValueError("n_top_genes/min_genes/min_cells/random_state are invalid")
+    state = _transformation_state(transformation_state)
     _validate_expression(adata)
     if adata.n_obs < 3 or adata.n_vars < 2:
-        raise ValueError("Leiden partitioning requires at least three units and two genes")
+        raise PrerequisiteUnavailable("Leiden partitioning requires at least three units and two genes")
     try:
         import scanpy as sc
     except ImportError as exc:
@@ -122,26 +167,130 @@ def compute_partition(adata, *, resolution: float = 0.5, n_top_genes: int = 2000
     if min_cells:
         sc.pp.filter_genes(work, min_cells=min_cells)
     if work.n_obs < 3 or work.n_vars < 2:
-        raise ValueError("QC retained fewer than three units or two genes")
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message="Some cells have zero counts")
-        sc.pp.normalize_total(work, target_sum=1e4)
-    sc.pp.log1p(work)
+        raise PrerequisiteUnavailable("QC retained fewer than three units or two genes")
+    preprocessing = "declared_log1p_no_transform"
+    if state == "untransformed_nonnegative":
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Some cells have zero counts")
+            sc.pp.normalize_total(work, target_sum=1e4)
+        sc.pp.log1p(work)
+        preprocessing = "normalize_total_1e4_log1p"
+    hvg_flavor = "seurat"
     if work.n_vars > n_top_genes:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=SparseEfficiencyWarning)
-            sc.pp.highly_variable_genes(work, n_top_genes=n_top_genes, flavor="seurat_v3", check_values=False)
+            sc.pp.highly_variable_genes(work, n_top_genes=n_top_genes, flavor=hvg_flavor)
+        if not work.var["highly_variable"].astype(bool).any():
+            raise PrerequisiteUnavailable("HVG selection retained no genes")
         work = work[:, work.var["highly_variable"].to_numpy()].copy()
     n_pcs = min(40, work.n_obs - 1, work.n_vars - 1)
     if n_pcs < 1:
-        raise ValueError("No usable principal components after filtering")
-    sc.tl.pca(work, n_comps=n_pcs, svd_solver="arpack")
+        raise PrerequisiteUnavailable("No usable principal components after filtering")
+    sc.tl.pca(work, n_comps=n_pcs, svd_solver="arpack", random_state=random_state)
     sc.pp.neighbors(work, n_neighbors=min(10, work.n_obs - 1), n_pcs=n_pcs, random_state=random_state)
-    sc.tl.leiden(work, resolution=float(resolution), key_added="partition", random_state=random_state, flavor="igraph", n_iterations=2, directed=False)
-    labels = work.obs["partition"].astype(str).rename("partition")
     embedding = None
     if "X_pca" in work.obsm:
         values = np.asarray(work.obsm["X_pca"])
         n_dimensions = min(2, values.shape[1])
         embedding = pd.DataFrame(values[:, :n_dimensions], index=work.obs_names, columns=[f"PC{i + 1}" for i in range(n_dimensions)])
-    return {"labels": labels, "summary": {"status": "ok", "resolution": float(resolution), "n_units": int(work.n_obs), "n_clusters": int(labels.nunique()), "input_units": int(input_units), "input_genes": int(input_genes), "n_genes": int(work.n_vars), "random_state": int(random_state)}, "embedding": embedding}
+    summary = {
+        "status": "prepared", "n_units": int(work.n_obs), "input_units": int(input_units),
+        "input_genes": int(input_genes), "n_genes": int(work.n_vars),
+        "random_state": int(random_state), "transformation_state": state,
+        "hvg_flavor": hvg_flavor, "preprocessing": preprocessing,
+    }
+    return PreparedPartition(work, embedding, summary, random_state, state)
+
+
+def partition_prepared_graph(prepared: PreparedPartition, *, resolution: float = 0.5) -> dict:
+    """Run Leiden on a copy of a prepared graph without changing the basis."""
+    if not isinstance(prepared, PreparedPartition):
+        raise TypeError("prepared must be a PreparedPartition")
+    if not np.isfinite(resolution) or resolution <= 0:
+        raise ValueError("resolution must be positive and finite")
+    try:
+        import scanpy as sc
+    except ImportError as exc:
+        raise ImportError("scanpy is required for Leiden partitioning") from exc
+    work = prepared.work.copy()
+    sc.tl.leiden(
+        work, resolution=float(resolution), key_added="partition",
+        random_state=prepared.random_state, flavor="igraph", n_iterations=2, directed=False,
+    )
+    labels = work.obs["partition"].astype(str).rename("partition")
+    summary = dict(prepared.summary)
+    summary.update({"status": "ok", "resolution": float(resolution), "n_clusters": int(labels.nunique())})
+    embedding = None if prepared.embedding is None else prepared.embedding.copy()
+    return {"labels": labels, "summary": summary, "embedding": embedding}
+
+
+def select_matched_k_partition(
+    prepared: PreparedPartition,
+    *,
+    candidate_resolutions: Sequence[float],
+    target_k: int,
+    main_resolution: float = 0.5,
+) -> dict:
+    """Select an exact or nearest-K Raw sensitivity partition deterministically."""
+    if type(target_k) is not int or target_k < 1:
+        raise ValueError("target_k must be a positive integer")
+    if not np.isfinite(main_resolution) or main_resolution <= 0:
+        raise ValueError("main_resolution must be positive and finite")
+    resolutions = sorted({float(value) for value in candidate_resolutions})
+    if not resolutions or any(not np.isfinite(value) or value <= 0 for value in resolutions):
+        raise ValueError("candidate_resolutions must contain positive finite values")
+    results, rows = {}, []
+    for resolution in resolutions:
+        result = partition_prepared_graph(prepared, resolution=resolution)
+        actual_k = int(result["summary"]["n_clusters"])
+        results[resolution] = result
+        rows.append({
+            "resolution": resolution, "target_k": target_k, "actual_k": actual_k,
+            "k_delta": actual_k - target_k, "absolute_k_delta": abs(actual_k - target_k),
+            "exact": actual_k == target_k,
+        })
+    candidates = pd.DataFrame(rows)
+    exact = candidates.loc[candidates.exact]
+    pool = exact if not exact.empty else candidates.loc[
+        candidates.absolute_k_delta == candidates.absolute_k_delta.min()
+    ]
+    selected_index = min(
+        pool.index,
+        key=lambda index: (abs(float(pool.loc[index, "resolution"]) - main_resolution),
+                           float(pool.loc[index, "resolution"])),
+    )
+    candidates["selected"] = False
+    candidates.loc[selected_index, "selected"] = True
+    selected_row = candidates.loc[selected_index]
+    status = "exact" if bool(selected_row.exact) else "nearest"
+    selection = {
+        "status": status, "target_k": target_k,
+        "actual_k": int(selected_row.actual_k), "k_delta": int(selected_row.k_delta),
+        "resolution": float(selected_row.resolution), "main_resolution": float(main_resolution),
+    }
+    return {
+        "selection": selection,
+        "candidates": candidates,
+        "selected": results[float(selected_row.resolution)],
+    }
+
+
+def compute_partition(
+    adata,
+    *,
+    resolution: float = 0.5,
+    n_top_genes: int = 2000,
+    random_state: int = 42,
+    min_genes: int = 0,
+    min_cells: int = 0,
+    transformation_state: str = "untransformed_nonnegative",
+) -> dict:
+    """Run an independent Leiden partition without altering the input AnnData."""
+    if not np.isfinite(resolution) or resolution <= 0:
+        raise ValueError("resolution must be positive and finite")
+    prepared = prepare_partition_graph(
+        adata, n_top_genes=n_top_genes, random_state=random_state,
+        min_genes=min_genes, min_cells=min_cells,
+        transformation_state=transformation_state,
+    )
+    return partition_prepared_graph(prepared, resolution=resolution)

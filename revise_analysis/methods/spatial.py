@@ -68,21 +68,48 @@ def native_knn_graph(coordinates: np.ndarray, *, n_neighbors: int = 6) -> sparse
     return graph
 
 
-def compute_moran(adata, *, spatial_key: str = "spatial", n_neighbors: int = 6, min_units: int = 3, block_size: int = 64) -> pd.DataFrame:
-    """Compute per-gene Moran's I on a normalized/logged copy and native graph."""
+def compute_moran(
+    adata,
+    *,
+    spatial_key: str = "spatial",
+    n_neighbors: int = 6,
+    min_units: int = 3,
+    block_size: int = 64,
+    transformation_state: str = "untransformed_nonnegative",
+) -> pd.DataFrame:
+    """Compute per-gene Moran's I on a side-native graph.
+
+    Untransformed values are normalized and log1p transformed on a copy.
+    Already log1p-transformed values are used as declared, preventing a second
+    normalization or log transform.  Unknown scale is rejected for callers to
+    record as an unmet method prerequisite.
+    """
     if type(n_neighbors) is not int or type(min_units) is not int or type(block_size) is not int or n_neighbors < 1 or min_units < 1 or block_size < 1:
         raise ValueError("min_units and block_size must be at least one")
+    aliases = {
+        "untransformed": "untransformed_nonnegative",
+        "untransformed_nonnegative": "untransformed_nonnegative",
+        "log1p": "log1p_nonnegative",
+        "log1p_nonnegative": "log1p_nonnegative",
+    }
+    try:
+        state = aliases[str(transformation_state)]
+    except KeyError as exc:
+        raise ValueError(
+            "transformation_state must be untransformed_nonnegative or log1p_nonnegative"
+        ) from exc
     _validate_expression(adata)
     coordinates = _coordinates(adata, spatial_key)
     graph = native_knn_graph(coordinates, n_neighbors=n_neighbors)
     reason = "too_few_units" if adata.n_obs < min_units else "no_edges" if graph.nnz == 0 else ""
-    try:
-        import scanpy as sc
-    except ImportError as exc:
-        raise ImportError("scanpy is required to normalize expression for Moran I") from exc
     work = adata.copy()
-    sc.pp.normalize_total(work, target_sum=1e4)
-    sc.pp.log1p(work)
+    if state == "untransformed_nonnegative":
+        try:
+            import scanpy as sc
+        except ImportError as exc:
+            raise ImportError("scanpy is required to normalize expression for Moran I") from exc
+        sc.pp.normalize_total(work, target_sum=1e4)
+        sc.pp.log1p(work)
     rows, weight_sum = [], float(graph.sum())
     for start in range(0, work.n_vars, block_size):
         block = work.X[:, start:start + block_size]
@@ -102,5 +129,5 @@ def compute_moran(adata, *, spatial_key: str = "spatial", n_neighbors: int = 6, 
                 if not np.isfinite(value):
                     raise ValueError("Moran computation produced a nonfinite value")
                 status, why = "computed", ""
-            rows.append({"gene_id": str(gene), "moran": value, "status": status, "reason": why, "n_units": int(work.n_obs), "n_edges": int(graph.nnz)})
+            rows.append({"gene_id": str(gene), "moran": value, "status": status, "reason": why, "n_units": int(work.n_obs), "n_edges": int(graph.nnz), "transformation_state": state})
     return pd.DataFrame(rows).set_index("gene_id", drop=False)
