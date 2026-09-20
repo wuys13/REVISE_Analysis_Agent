@@ -246,12 +246,12 @@ _TOPIC_CONTEXT = {
     "membership": "仅比较明确共同 ID cohort 的分区对应差异，不表示生物学身份转变，也不是其他分析的前置条件。",
     "genes": "Moran 是每侧原生空间图上的并行证据，不依赖 State 区域。完整基因与共享基因结果分别阅读，差值不是配对重建误差。",
     "program-overall": "每侧在固定 cohort 与基因轴上评分一次。查看覆盖率和实际 rank cutoff 后再判断比较条件；两侧分数不自动作差。",
-    "anatomy": "完整 Raw 的组织背景独立于 State 网格；Interface 来自窗口内 Tumor 与指定 Normal 来源共存。无覆盖与 Other 分开。",
+    "anatomy": "由实际交付的 SVC broad 标签与坐标定义背景，独立于 State 网格；Interface 来自窗口内 Tumor 与指定 Normal 来源共存。Other 仅描述 SVC 窗口，不表示原组织没有这些类型；无 SVC 网格覆盖的点为 Unknown。",
     "scale": "推荐只依据 SVC 标签支持，不依据 State/Gain 大小；Raw/common 曲线若为坐标潜在支持，不代表已有表达 baseline。显式尺度不会被推荐覆盖。",
     "diversity": "Kobs、entropy、Neff=exp(H) 与 evenness=Neff/Kobs 描述不同方面；数值来自生效参数指定的方窗、最少单位数与等量抽样次数。主 State 使用完整输入 SVC 标签，表达 baseline 保留自己的实际 cohort。",
     "state": "State 表示 SVC 自身局部标签多样性。先读连续场，再读阈值和区域；阈值不可用时保留连续结果，未知不计入区域外。",
     "gain": "ΔNeff vs Raw Leiden 保留共同有效窗口中的正负差值。正值只作 Gain candidate；Raw K-control 只检查标签数量粒度，不证明生物学改善。",
-    "region-anatomy": "按 SVC 观测点落入 Anatomy 的组成阅读，Raw 背景另保留；State、差值候选各有独立分母，不把同源汇总当独立验证。",
+    "region-anatomy": "按 SVC 观测点落入 Anatomy 的组成阅读，Raw 观测点组成单独保留；State、差值候选各有独立分母，不把同源汇总当独立验证。",
     "label-composition": "标签组成帮助解释局部多样性，但 State 本身由这些标签定义，因此区域内外组成不是独立验证。",
     "program-location": "这里将固定单位评分与已有 window、Anatomy、State/Gain 关联，不重新评分。未评分保留缺失；共定位不等于独立验证或因果关系。",
     "changed-location": "分母只包括实际完成共同 ID 比较的单位；区域和 Anatomy 用于定位这些分区对应差异，不反向定义 State。",
@@ -414,8 +414,8 @@ def _impact_paths(topic: str, scope: str | None, result: dict, by_relative: dict
                 candidates += [f"tables/pathway_{side}_{program}.csv", f"tables/pathway_{side}_{program}_metadata.json",
                                f"figures/pathway_{side}_{program}.png"]
     elif topic == "anatomy" and scope is None:
-        candidates = ["tables/raw_anatomy_context.csv", "tables/raw_anatomy_windows.csv",
-                      "tables/raw_point_anatomy.csv", "tables/svc_point_anatomy.csv", "figures/raw_anatomy_context.png"]
+        candidates = ["tables/svc_anatomy_context.csv", "tables/svc_anatomy_windows.csv",
+                      "tables/raw_point_anatomy.csv", "tables/svc_point_anatomy.csv", "figures/svc_anatomy_context.png"]
     elif topic == "anatomy" and slug:
         candidates = [f"tables/parent_anatomy_raw_{slug}.csv", f"tables/parent_anatomy_raw_baseline_{slug}.csv",
                       f"tables/parent_anatomy_svc_{slug}.csv", f"figures/anatomy_neff_state_{slug}.png"]
@@ -622,10 +622,10 @@ def _scope_fact(topic: str, scope: str | None, scope_label: str, artifacts: list
             if pieces:
                 return "Program 总体评分：" + "；".join(pieces) + "。"
     if topic == "anatomy":
-        windows = available.get("tables/raw_anatomy_windows.csv")
+        windows = available.get("tables/svc_anatomy_windows.csv")
         if windows is not None and "level1_region" in windows:
             counts = windows.level1_region.value_counts()
-            return f"完整 Raw Anatomy 共 {len(windows)} 个窗口：" + "、".join(f"{key} {value}" for key, value in counts.items()) + "。Interface 按窗口共存定义。"
+            return f"SVC-defined Anatomy 共 {len(windows)} 个窗口：" + "、".join(f"{key} {value}" for key, value in counts.items()) + "。Other 表示已交付 SVC 窗口内未观察到 Tumor/Normal；Interface 按窗口共存定义。"
         candidates = [frame for frame in available.values() if frame is not None and "n_units" in frame]
         if candidates:
             pieces = []

@@ -36,13 +36,13 @@ def test_impact_keeps_sides_independent_and_membership_is_explicit(tmp_path, mon
     result = impact.run(sample, tmp_path, {"membership_same_units": True, "window_side_microns": 100})
 
     assert result["status"] == "partial"  # missing scopes are reported, not silently erased
-    assert (tmp_path / "tables/raw_anatomy_context.csv").exists()
+    assert (tmp_path / "tables/svc_anatomy_context.csv").exists()
     assert (tmp_path / "tables/membership_All.csv").exists()
     assert (tmp_path / "tables/spatial_changed_map_All.csv").exists()
     assert (tmp_path / "tables/gain_All_common_valid_windows.csv").exists()
     assert (tmp_path / "tables/window_diversity_raw_level2_baseline_All.csv").exists()
     assert (tmp_path / "tables/raw_level2_baseline_vs_svc_All_common_valid_windows.csv").exists()
-    assert (tmp_path / "figures/raw_anatomy_context.png").exists()
+    assert (tmp_path / "figures/svc_anatomy_context.png").exists()
     assert (tmp_path / "figures/spatial_changed_map_All.png").exists()
 
 
@@ -61,8 +61,9 @@ def test_membership_scope_is_defined_by_raw_not_svc_broad_annotation(tmp_path, m
     assert (tmp_path / "tables/membership_Fibroblast.csv").exists()
 
 
-def test_impact_anatomy_uses_full_raw_level1_when_level2_is_absent(tmp_path, monkeypatch):
+def test_impact_anatomy_uses_svc_broad_when_raw_level2_is_absent(tmp_path, monkeypatch):
     sample = _sample()
+    sample.raw.obs["Level1"] = "RawOnly"
     del sample.raw.obs["Level2"]
     del sample.svc.obs["Level2"]
 
@@ -76,8 +77,9 @@ def test_impact_anatomy_uses_full_raw_level1_when_level2_is_absent(tmp_path, mon
     }))
 
     result = impact.run(sample, tmp_path, {"window_side_microns": 100})
-    anatomy = pd.read_csv(tmp_path / "tables/raw_anatomy_context.csv")
-    assert set(anatomy["broad_label"]) == set(sample.labels("raw"))
+    anatomy = pd.read_csv(tmp_path / "tables/svc_anatomy_context.csv")
+    assert set(anatomy["broad_label"]) == set(sample.labels("svc"))
+    assert set(anatomy["broad_label"]) != set(sample.labels("raw"))
     assert not (tmp_path / "tables/window_diversity_raw_level2_baseline_All.csv").exists()
     assert any(item["component"] == "raw_level2_baseline" for item in result["unavailable"])
 

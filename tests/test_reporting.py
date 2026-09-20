@@ -232,7 +232,7 @@ def test_impact_figures_render_one_section_from_registered_tables(tmp_path: Path
         "window_id": ["0_0", "1_0"], "window_x": [5.0, 15.0], "window_y": [5.0, 5.0],
         "level1_region": ["Tumor", "Normal"],
     })
-    anatomy.to_csv(tables / "raw_anatomy_windows.csv", index=False)
+    anatomy.to_csv(tables / "svc_anatomy_windows.csv", index=False)
     state = pd.DataFrame({
         "window_id": ["0_0", "1_0"], "window_x": [5.0, 15.0], "window_y": [5.0, 5.0],
         "n_units": [5, 2], "valid_window": [True, False],

@@ -1,6 +1,6 @@
 # Formal REVISE mini delivery; analysis parameters are owned here.
 schema_version: 1
-output_dir: ../output/mini-acceptance/20260920/iST/batch
+output_dir: ../output/mini-acceptance/20260920-closeout/iST/batch
 samples:
 - ../../REVISE/output/mini-acceptance/20260920/delivery/P2CRC_Xenium_mini/random/sample.yaml
 analyses:

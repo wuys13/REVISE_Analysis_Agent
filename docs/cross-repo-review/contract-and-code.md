@@ -14,6 +14,7 @@
 | 标签 | 交付映射指向推断 broad/subtype；SVC 实际有 `SVC_cluster` 才声明 reconstruction | 按映射读列，cell type仅统一 /→_、保留NA；State使用原主标签；Raw Level2按当前scope有效ID计算 | 主重建分群不等于已注释 biological subtype；可读取不代表每条 route 都具备 State 所需标签 |
 | 单位及基因轴 | 保留真实 ID、坐标及 route 对应关系，不强造通用 Raw/SVC 一一配对 | ID/基因名须唯一，两侧数量、顺序、基因集合可不同；membership 使用明确共同 ID | sST parent 信息不是共享同单位 ID；不能按行号或坐标推断成员身份 |
 | 空间坐标 | 检查两侧声明坐标形状及有限性，um 转 micron；未知比例不猜 | 物理窗口按声明单位与转换比例判断；Anatomy 与 State 独立尺度 | sST 当前发布虚拟单位坐标；本轮sST实际parent/坐标通过；0.73尺度暂定 |
+| Anatomy 来源 | 交付实际重建成功的 SVC broad 标签及坐标，未重建类型不并入 | 使用完整 SVC 定义 Anatomy；Raw/SVC 分别按坐标映射，保留共享 Raw 原点和 State/Gain 网格 | Other 仅表示已交付 SVC 窗口未观察到 Tumor/Normal；没有 SVC Anatomy 网格的点为 Unknown，不代表原组织缺少相应类型 |
 | whole-sample | iST 按实际 broad type 分析；不符合条件的类型带原因跳过；eligible 计算错误使样本失败，不发布半样本成功 | 分析按实际交付对象与 scope 判断，不假定 SVC 覆盖所有 Raw 单位 | “whole-sample 交付”不等于所有类型都成功重建；查看上游覆盖与跳过记录 |
 | 参数 | 生产参数与来源保留在上游交付信息 | 默认值 → sample → project → override；资源路径按声明文件解析；Notebook/batch 共用解析 | 重建参数与分析参数是两套职责，不要求值或随机过程相同 |
 | 失败与发布 | 同次三文件发布、备份与回滚 | runner 发布当前分析结果；缺前提与执行错误分开；Impact 失效阶段撤销旧登记 | 上游样本失败与下游分析 partial 语义不同；旧磁盘文件不自动成为本次证据 |

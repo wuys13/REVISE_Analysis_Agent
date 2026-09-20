@@ -30,7 +30,7 @@ SECTION_DEFINITIONS = (
     ("support", "空间尺度与支持", "独立于最终结果的支持曲线和尺度推荐。"),
     ("diversity", "局部标签多样性", "原生重建标签多样性及可用的 baseline 字段。"),
     ("regions", "State 与差值候选", "连续场、阈值诊断和候选掩膜。"),
-    ("anatomy", "Anatomy 背景", "完整 Raw Anatomy 窗口及按观测点组成汇总的 parent 窗口。"),
+    ("anatomy", "Anatomy 背景", "由完整 SVC broad 标签定义的 Anatomy 窗口及按 Raw/SVC 观测点组成汇总的 parent 窗口。"),
     ("molecular", "分子空间结果", "可用时保存原生 Moran 结果和固定 cohort 的 AUCell 分数。"),
     ("membership", "共同 ID 的 membership", "仅在明确共同 ID cohort 上生成的单位变化证据。"),
     ("integration", "集成空间证据", "带有明确支持数和分母的派生事实表。"),
@@ -48,7 +48,7 @@ _STAGE_DEPENDENCIES = {
 _STAGE_STATE = {
     "input": ("svc_labels",),
     "baseline": ("partitions", "prepared_graphs", "partition_cohorts", "raw_level2"),
-    "support": ("origin", "microns_per_coordinate", "anatomy_side", "anatomy_windows", "raw_anatomy_points"),
+    "support": ("origin", "microns_per_coordinate", "anatomy_side", "anatomy_windows", "svc_anatomy_points"),
     "diversity": ("windows",), "regions": ("region_tables", "gains", "raw_k_controls"),
     "anatomy": ("point_anatomy", "parent_anatomy"),
     "molecular": ("moran", "program_scores"), "membership": ("membership",),
@@ -315,7 +315,7 @@ class ImpactWorkflow:
         for path, section in self._figure_sections.items():
             if path in self.outputs:
                 reading_artifacts[section].append(path)
-        for artifact in ("tables/raw_anatomy_context.csv", "tables/raw_anatomy_windows.csv"):
+        for artifact in ("tables/svc_anatomy_context.csv", "tables/svc_anatomy_windows.csv"):
             if artifact in reading_artifacts["support"]:
                 reading_artifacts["support"].remove(artifact)
                 if artifact not in reading_artifacts["anatomy"]:
@@ -531,21 +531,22 @@ class ImpactWorkflow:
         origin = (float(full_raw.x.min()), float(full_raw.y.min()))
         anatomy_side = self.parameters["anatomy_window_side_microns"] / scale
         self.state.update(origin=origin, microns_per_coordinate=scale, anatomy_side=anatomy_side,
-                          anatomy_windows=None, raw_anatomy_points=None)
+                          anatomy_windows=None, svc_anatomy_points=None)
         try:
-            anatomy_assignments = assign_square_windows(full_raw, window_side_length=anatomy_side, origin=origin)
-            raw_broad = self.sample.labels("raw", self.sample.broad_key)
+            full_svc = coordinates(self.sample.svc, self.sample.spatial_key)
+            svc_broad = self.sample.labels("svc", self.sample.broad_key)
+            anatomy_assignments = assign_square_windows(full_svc, window_side_length=anatomy_side, origin=origin)
             anatomy_windows = assign_anatomy_candidates(
-                anatomy_assignments, raw_broad, tumor_label=self.parameters["anatomy_tumor_label"],
+                anatomy_assignments, svc_broad, tumor_label=self.parameters["anatomy_tumor_label"],
                 normal_source_label=self.parameters["anatomy_normal_label"])
-            anatomy_points = full_raw.join(anatomy_assignments[["window_id"]]).rename(columns={"window_id": "anatomy_window_id"})
+            anatomy_points = full_svc.join(anatomy_assignments[["window_id"]]).rename(columns={"window_id": "anatomy_window_id"})
             anatomy_points = anatomy_points.join(anatomy_windows.set_index("window_id")[["level1_region"]], on="anatomy_window_id")
-            anatomy_points["broad_label"] = raw_broad.reindex(anatomy_points.index)
-            self.state.update(anatomy_windows=anatomy_windows, raw_anatomy_points=anatomy_points)
-            self._save_table(anatomy_windows, "tables/raw_anatomy_windows.csv")
-            self._save_table(anatomy_points, "tables/raw_anatomy_context.csv")
+            anatomy_points["broad_label"] = svc_broad.reindex(anatomy_points.index)
+            self.state.update(anatomy_windows=anatomy_windows, svc_anatomy_points=anatomy_points)
+            self._save_table(anatomy_windows, "tables/svc_anatomy_windows.csv")
+            self._save_table(anatomy_points, "tables/svc_anatomy_context.csv")
         except (KeyError, ValueError) as exc:
-            unavailable("raw_anatomy_context", str(exc), self.missing)
+            unavailable("svc_anatomy_context", str(exc), self.missing)
         if self.state.get("svc_labels") is None:
             unavailable("window_support", "SVC reconstruction labels unavailable", self.missing)
             return

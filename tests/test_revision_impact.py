@@ -42,6 +42,74 @@ def test_reconstruction_labels_are_not_rewritten_by_broad_aliases(tmp_path):
     assert set(saved.label_role) == {"reconstructed_state_label"}
 
 
+def test_anatomy_is_built_from_svc_broad_without_reconstruction_cluster(tmp_path):
+    sample = _sample(reconstruction=False, unknown_expression=True)
+    sample.raw.obs["Level1"] = "RawOnly"
+    workflow = impact.ImpactWorkflow(sample, tmp_path, {"scopes": ["All"]}, continue_on_error=True)
+    workflow.run_stage("input")
+    record = workflow.run_stage("support")
+
+    assert record["status"] == "partial"
+    assert (tmp_path / "tables/svc_anatomy_context.csv").exists()
+    assert (tmp_path / "tables/svc_anatomy_windows.csv").exists()
+    context = pd.read_csv(tmp_path / "tables/svc_anatomy_context.csv")
+    assert set(context["broad_label"]) == {"Fibroblast"}
+    assert not any(item["component"] == "svc_anatomy_context" for item in workflow.missing)
+
+
+def test_raw_points_without_svc_anatomy_grid_are_unknown(tmp_path):
+    sample = _sample(unknown_expression=True)
+    sample.svc = sample.svc[:4].copy()
+    workflow = impact.ImpactWorkflow(
+        sample, tmp_path,
+        {"scopes": ["All"], "anatomy_window_side_microns": 40,
+         "parent_window_side_microns": {"All": 40}, "min_window_units": 2},
+        continue_on_error=True,
+    )
+    workflow.run_stage("input")
+    workflow.run_stage("support")
+    workflow.run_stage("anatomy")
+
+    points = pd.read_csv(tmp_path / "tables/raw_point_anatomy.csv", index_col=0)
+    outside = points.loc[points["x"] >= 40]
+    assert not outside.empty
+    assert outside["anatomy_covered"].eq(False).all()
+    assert set(outside["anatomy_region"]) == {"Unknown"}
+    assert "Other" in set(points["anatomy_region"])
+
+
+def test_svc_anatomy_source_keeps_raw_origin_and_state_gain_grid(tmp_path, monkeypatch):
+    sample = _sample()
+
+    monkeypatch.setattr(impact, "compute_partitions", lambda adata, **_: {
+        "labels": pd.Series([str(i % 2) for i in range(adata.n_obs)], index=adata.obs_names),
+        "summary": {"n_units": adata.n_obs, "n_clusters": 2},
+    })
+    workflow = impact.ImpactWorkflow(
+        sample, tmp_path,
+        {"scopes": ["All"], "anatomy_window_side_microns": 80,
+         "parent_window_side_microns": {"All": 40}, "min_window_units": 2,
+         "n_window_draws": 1, "region_n_bootstrap": 1},
+        continue_on_error=True,
+    )
+    for stage in ("input", "baseline", "support", "diversity", "regions"):
+        workflow.run_stage(stage)
+
+    assert workflow.state["origin"] == (0.0, 0.0)
+    state = pd.read_csv(tmp_path / "tables/state_All_region_windows.csv")
+    gain = pd.read_csv(tmp_path / "tables/gain_All_common_valid_windows.csv")
+    from revise_analysis.analyses._shared import coordinates
+    from revise_analysis.methods.regions import assign_square_windows
+    expected = assign_square_windows(
+        coordinates(sample.svc, sample.spatial_key), window_side_length=40, origin=(0.0, 0.0)
+    ).groupby("window_id", sort=True).agg(
+        window_x=("window_center_x", "first"), window_y=("window_center_y", "first")
+    ).reset_index()
+    actual = state[["window_id", "window_x", "window_y"]].sort_values("window_id").reset_index(drop=True)
+    pd.testing.assert_frame_equal(actual, expected.sort_values("window_id").reset_index(drop=True), check_dtype=False)
+    assert set(gain["window_id"]) == set(expected["window_id"])
+
+
 def test_cell_type_labels_normalize_slashes_preserve_na_and_reconstruction_identity():
     sample = _sample()
     sample.raw.obs.loc["u0", "Level1"] = "Mono/Macro"

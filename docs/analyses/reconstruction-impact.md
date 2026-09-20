@@ -10,7 +10,7 @@
 
 ### 2. State 与差异出现在哪里？
 
-State 使用完整有效 SVC 主标签在 parent 窗口中的局部多样性。Gain 只在 Raw 与 SVC 都有有效窗口时比较 `ΔNeff`，并保留正负差值、支持数和阈值状态。Anatomy 由完整 Raw broad 标签独立建立，再按 Raw/SVC 的实际观测点组成解释 parent 窗口；它提供位置背景，不定义 State 或 Gain。
+State 使用完整有效 SVC 主标签在 parent 窗口中的局部多样性。Gain 只在 Raw 与 SVC 都有有效窗口时比较 `ΔNeff`，并保留正负差值、支持数和阈值状态。Anatomy 由完整 SVC broad 标签和 SVC 坐标建立，再按 Raw/SVC 的实际观测点组成解释 parent 窗口；它提供位置背景，不定义 State 或 Gain。
 
 ### 3. 位置与分子/成员有什么关系？
 
@@ -30,9 +30,9 @@ Moran 是与 State/Gain 平行的原生空间图分支，不依赖 Region，也�
 
 ## 独立空间尺度
 
-完整 Raw tissue 构建 Anatomy；每个 parent 有自己的 State/Gain 网格。共享物理坐标系和完整 Raw 原点，但尺度独立：Anatomy `anatomy_window_side_microns` 与 parent 默认 `window_side_microns` 初始均 40 μm。候选尺度为 16、24、32、40、56、80 μm。
+完整 SVC broad 标签与 SVC 坐标构建 Anatomy；每个 parent 有自己的 State/Gain 网格。共享物理坐标系和既有完整 Raw 原点，但尺度独立：Anatomy `anatomy_window_side_microns` 与 parent 默认 `window_side_microns` 初始均 40 μm。候选尺度为 16、24、32、40、56、80 μm。
 
-Anatomy 唯一权威定义是窗口共存：Tumor 单独出现为 Tumor，配置的 Normal 来源（默认 Intestinal Epithelial）单独出现为 Normal，两者共存为 Interface，两者均无为 Other。上游单个单位的字面 `Interface` 仅保留来源，不直接生成窗口 Interface。
+Anatomy 唯一权威定义是窗口共存：Tumor 单独出现为 Tumor，配置的 Normal 来源（默认 Intestinal Epithelial）单独出现为 Normal，两者共存为 Interface，两者均无为 Other。Other 仅表示已交付 SVC 窗口内未观察到 Tumor/Normal，不是对原始 Raw 标签的重分类；没有对应 Anatomy 格的 Raw/SVC 点为 Unknown。上游单个单位的字面 `Interface` 仅保留来源，不直接生成窗口 Interface。
 
 跨尺度关系按实际观测点：每个 Raw/SVC 点独立落入 Anatomy 格，再在该侧 parent window 汇总 Anatomy 数量和比例。保存主导类别、并列与未知覆盖；Other 与 Unknown 分开。State/Gain 阅读用 SVC 点组成，同时保存完整 Raw parent 组成及实际 Raw Leiden cohort 的独立组成（存在表达抽样时两者分母不同）。不能用中心点、面积权重或不同网格恰好相同的 window_id 替代此关系。
 

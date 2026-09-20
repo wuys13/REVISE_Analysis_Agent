@@ -91,4 +91,6 @@ Impact 的 `sample_n_units` 只约束表达 baseline/分子评分群体，不裁
 
 Anatomy 的 `anatomy_window_side_microns` 与 parent 默认 `window_side_microns` 独立，初始均为 40 μm。按 parent 设置的尺度及可选控制见 Impact 方法页。推荐尺度只提供支持诊断，不覆盖显式值。
 
+Anatomy 的窗口标签来源是 SVC 的 `columns.broad` 与 `spatial`；Raw origin 继续作为共享物理坐标原点，Raw/SVC 点映射保留 `Other`（已交付 SVC 格内未观察到 Tumor/Normal）与 `Unknown`（无对应 SVC Anatomy 格）的区别。
+
 `expression.<side>.identity` 是上游来源声明字符串（如 measured_expression、reconstructed_expression）；`unknown` 表示尚未确认，不是根据数值自动检测的类别。scale 不用于声明另一种可接受的正式输入；已知 identity 对应的计算契约固定记录为 `untransformed_nonnegative`。

@@ -5,12 +5,12 @@
 阅读按三个问题推进：
 
 1. **重建后呈现什么，两侧差异在哪里？** 输入小节读取 SVC 提供的重建状态标签，baseline 小节读取 Raw 独立表达分群与已提供的 Raw Level2。两侧各自的 Moran 与 AUCell 结果保留原生分支。
-2. **State 与差异出现在哪里？** State 使用 SVC 主标签的局部多样性，Gain 只在共同有效窗口上对照 Raw Leiden；Anatomy 由完整 Raw 的 broad 标签独立建立，再按实际观测点解释 parent 窗口。
+2. **State 与差异出现在哪里？** State 使用 SVC 主标签的局部多样性，Gain 只在共同有效窗口上对照 Raw Leiden；SVC Anatomy 由 SVC broad 标签与坐标定义，Raw 共享同一 origin 落点，缺少对应 SVC 网格的 Raw 点记为 Unknown。
 3. **位置与分子/成员有什么关系？** Moran 与 State/Gain 平行；AUCell 先固定单位级评分，再做窗口、Anatomy 或 Region 聚合；membership 只在 shared IDs 上比较；集成表连接已保存事实，不是独立验证。
 
-Notebook 会显示每个阶段的 `pending/completed/partial/unavailable/error` 状态、中间产物、不可用原因、关键参数和最终参数来源。`result.outputs` 是当前输出 manifest，阅读辅助函数只读取 manifest 中声明且实际存在的文件，不把目录中的旧文件当作本次结果。源码 Notebook 有意保持未执行状态。
+Notebook 会显示每个阶段的 `pending/completed/partial/unavailable/error` 状态、中间产物、不可用原因、关键参数和最终参数来源；各阶段按自身字段、表达身份和坐标前提判断 capability。`result.outputs` 是当前输出 manifest，阅读辅助函数只读取 manifest 中声明且实际存在的文件，不把目录中的旧文件当作本次结果。源码 Notebook 有意保持未执行状态。
 
-正式P2运行设置 `PROJECT_YAML=configs/p2_project.yaml`，它直接指向REVISE发布的sample.yaml；hST/sST使用对应项目配置。未设置项目时的历史默认样本是 `data/P2CRC_Xenium/sample.yaml`，默认 Notebook 输出是 `output/notebook/P2CRC_Xenium`。可通过 `SAMPLE_YAML`、可选 `PROJECT_YAML` 和 `OUTPUT_DIR` 覆盖；`RECONSTRUCTION_IMPACT_OVERRIDES` 接受 JSON 参数映射。项目只有一个样本时可从项目声明解析；项目含多个样本时必须显式设置 `SAMPLE_YAML`，不会静默选择第一个。
+无环境变量时默认使用 `configs/p2_project.yaml`，从其唯一 sample 声明推导 `SAMPLE_YAML`；hST/sST 使用对应项目配置。显式设置 `SAMPLE_YAML` 时，若未同时显式设置 `PROJECT_YAML`，不套用默认 project；显式 project 与 sample 仍执行 membership 校验。显式 project 未指定 sample 时，项目只有一个样本才自动推导，多样本项目必须显式选择。默认 Notebook 输出是 `output/notebook/<sample_id>`。可通过 `SAMPLE_YAML`、可选 `PROJECT_YAML` 和 `OUTPUT_DIR` 覆盖；`RECONSTRUCTION_IMPACT_OVERRIDES` 接受 JSON 参数映射。
 
 参数优先级为包默认值 < sample YAML < project YAML < Notebook override。修改 `OVERRIDES` 后先重新运行“应用参数并查看失效阶段”单元。该单元重新解析所有来源，把完整 `EFFECTIVE_PARAMETERS` 快照传给 `workflow.apply_parameters(...)`；这样删除 override 也会恢复 sample/project/default 值。已完成但依赖改动参数的阶段回到 `pending`，无关阶段保持当前。阶段运行前 Notebook 会再次解析并比较待应用参数，若与 `workflow.parameters` 不一致则要求先应用。`run_stage` 会拒绝消费失效前置，成功或科学不可用后按节调用 `render_figures(section)`，所以图与解释就近出现；末尾只保存清单、报告和综合事实，不补跑科学阶段。
 
@@ -42,7 +42,7 @@ nbformat.write(notebook, executed)
 PY
 ```
 
-小型合成 fixture 适合检查调用顺序。Raw `.X` 表示上游交付的原始侧矩阵，SVC `.X` 表示重建侧矩阵；本仓库不改写它们。正式 `.X` 契约固定为 finite、nonnegative、unlogged linear，真实样本必须根据上游证据声明 identity。确认的线性浮点值（包括小数和小于 1 的值）可以保留；旧 `log`/`log1p` 声明会被拒绝，`identity: unknown` 也不会放行 P2 表达消费者。缺少 Level2、某一侧已确认表达或 AUCell provider 时，只影响依赖它们的阶段，并保留不可用原因。正式结果与静态报告由批量运行器负责；报告只读取已保存结果。
+小型合成 fixture 适合检查调用顺序。Raw `.X` 表示上游交付的原始侧矩阵，SVC `.X` 表示重建侧矩阵；本仓库不改写它们。SVC Anatomy 由 SVC broad 与坐标定义，Raw 共享 origin；没有对应 SVC 网格的 Raw 点为 Unknown，窗口为 Other 不等于原始 tissue 没有 Tumor。正式 `.X` 契约固定为 finite、nonnegative、unlogged linear，真实样本必须根据上游证据声明 identity。确认的线性浮点值（包括小数和小于 1 的值）可以保留；旧 `log`/`log1p` 声明会被拒绝，`identity: unknown` 也不会放行 P2 表达消费者。缺少 Level2、某一侧已确认表达或 AUCell provider 时，只影响依赖它们的阶段，并保留不可用原因。正式结果与静态报告由批量运行器负责；报告只读取已保存结果。
 
 ## 独立问题的 Notebook
 

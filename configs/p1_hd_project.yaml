@@ -1,6 +1,6 @@
 # Formal mini delivery; K-control enabled to verify missing-cluster capability.
 schema_version: 1
-output_dir: ../output/mini-acceptance/20260920/hST/batch
+output_dir: ../output/mini-acceptance/20260920-closeout/hST/batch
 samples:
 - ../../REVISE/output/mini-acceptance/20260920/delivery/P1CRC_HD_mini/default/sample.yaml
 analyses:

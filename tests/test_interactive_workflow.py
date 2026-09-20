@@ -195,7 +195,7 @@ def test_first_region_run_preserves_pure_upstream_figures(tmp_path):
     through(w, 'diversity')
     retained = {'figures/window_support_grid_All.png': 'support',
                 'figures/window_diversity_svc_All.png': 'diversity',
-                'figures/raw_anatomy_context.png': 'anatomy'}
+                'figures/svc_anatomy_context.png': 'anatomy'}
     for path, section in retained.items():
         w.outputs[path] = path
         w._figure_sections[path] = section

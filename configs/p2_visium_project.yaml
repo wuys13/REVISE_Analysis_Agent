@@ -1,8 +1,8 @@
 # Formal mini delivery; K-control enabled to verify missing-cluster capability.
 schema_version: 1
-output_dir: ../output/mini-acceptance/20260920/sST/batch
+output_dir: ../output/mini-acceptance/20260920-closeout/sST/batch
 samples:
-- ../../REVISE/output/mini-acceptance/20260920/delivery/P2CRC_Visium_mini/default/sample.yaml
+- ../../REVISE/output/mini-acceptance/20260920-closeout/delivery/P2CRC_Visium_mini/default/sample.yaml
 analyses:
   reconstruction_impact:
     scopes:

@@ -184,10 +184,10 @@ def render_impact_figures(
                      plot_diversity_distribution(frame, path, value_column=value, title=title + " 分布"))
 
     if wanted("anatomy"):
-        anatomy = read("raw_anatomy_context.csv")
+        anatomy = read("svc_anatomy_context.csv")
         if anatomy is not None:
-            draw("raw_anatomy_context", "anatomy", lambda path: plot_anatomy_context(anatomy, path))
-        windows = read("raw_anatomy_windows.csv")
+            draw("svc_anatomy_context", "anatomy", lambda path: plot_anatomy_context(anatomy, path))
+        windows = read("svc_anatomy_windows.csv")
         if windows is not None:
             micron_scale = _microns_per_coordinate(paths.get("tables/input_manifest.json"))
             anatomy_microns = _finite_positive(parameters.get("anatomy_window_side_microns"))
@@ -206,7 +206,7 @@ def render_impact_figures(
                 draw(f"anatomy_neff_state_{scope}", "anatomy", lambda path, state_frame=state_frame,
                      scope=scope, anatomy_side=anatomy_side, parent_side=parent_side: plot_anatomy_neff_state(
                          windows, state_frame, path, anatomy_window_side=anatomy_side,
-                         parent_window_side=parent_side, title=f"{scope}：Raw Anatomy、SVC Neff 与 State",
+                         parent_window_side=parent_side, title=f"{scope}：SVC Anatomy、SVC Neff 与 State",
                      ))
 
     if wanted("molecular"):

@@ -2,7 +2,7 @@
 
 本仓库的初衷是让 Agent **直接完成下游分析，并能围绕新科学问题扩展分析**。从 REVISE 分支选择性迁入方法，是为了保留科学计算能力和经验，同时解除对重建 backend、旧载体和旧批处理的依赖。Impact 是目前最完整的阅读工作台，不代表全部能力。
 
-2026-09-20 双仓 mini 真实联测已完成，当前结果和限制见[现状与缺口](evidence-and-gaps.md)。正式项目配置为 `configs/p2_project.yaml`、`p1_hd_project.yaml`、`p2_visium_project.yaml`，直接引用 REVISE 发布的 sample.yaml。
+2026-09-20 双仓 mini 真实联测及后续收口的当前结果和限制见[现状与缺口](evidence-and-gaps.md)。正式项目配置为 `configs/p2_project.yaml`、`p1_hd_project.yaml`、`p2_visium_project.yaml`，直接引用 REVISE 发布的 sample.yaml。
 
 本说明从消费端组织审阅；[上游审阅入口](../../../REVISE/docs/development/reconstruction-analysis/cross-repo-review.md)从生产端组织。两者引用各自实现，不定义第二套协议。适用版本、证据和未完成工作见[现状与缺口](evidence-and-gaps.md)。
 
@@ -16,7 +16,7 @@
 | Analysis Agent | 原生对象加载、方法与流程、参数解析、Notebook 探索、批处理、结果与静态报告 | 不导入 `revise`，不改写输入、不补 Raw Level2、不引入旧 spatial/expr 兼容层 |
 | Agent／研究者 | 选择问题与范围、检查前提、调用或扩展分析、阅读诊断并提出下一问题 | 不以执行成功代替科学解释，不把 unavailable 当无差异 |
 
-Raw/SVC 默认保留独立单位与基因轴；仅特定问题采用局部明确对应。State 描述 SVC 主标签的局部多样性，Gain 是相对 Raw baseline 的描述性差值；二者都不自动证明重建带来生物学改善。
+三类 SVC 共用分析流程，能力依据表达声明、标签、坐标和 parent/ID 字段判断。Raw/SVC 默认保留独立单位与基因轴；仅特定问题采用局部明确对应。Anatomy 由实际交付的 SVC broad 标签与坐标定义，Raw/SVC 各自映射到同一背景；它不代表完整 Raw tissue 注释。State 描述 SVC 主标签的局部多样性，Gain 是相对 Raw baseline 的描述性差值；二者都不自动证明重建带来生物学改善。
 
 ## Agent 的三种使用方式
 

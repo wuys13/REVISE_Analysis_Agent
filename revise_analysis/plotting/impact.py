@@ -38,7 +38,7 @@ def plot_gain(gain: pd.DataFrame, destination: Path) -> Path:
 
 
 def plot_anatomy_context(context: pd.DataFrame, destination: Path) -> Path:
-    """Draw the saved full-Raw Level1 anatomy context in native coordinates."""
+    """Draw the saved SVC-defined Anatomy context in native coordinates."""
     category = "level1_region" if "level1_region" in context else "anatomy_class"
     required = {"x", "y", category}
     if missing := required - set(context.columns):
@@ -49,7 +49,7 @@ def plot_anatomy_context(context: pd.DataFrame, destination: Path) -> Path:
     for label, frame in context.groupby(category, dropna=False, sort=True):
         axis.scatter(frame["x"], frame["y"], s=7, alpha=.75,
                      color=colors.get(str(label), "#87929e"), label=str(label), rasterized=True)
-    axis.set(title="Raw Level1 Anatomy 窗口背景", xlabel="x", ylabel="y", aspect="equal")
+    axis.set(title="SVC-defined Anatomy 窗口背景", xlabel="x", ylabel="y", aspect="equal")
     axis.legend(title="窗口背景", markerscale=2)
     return _save(figure, destination)
 
@@ -400,7 +400,7 @@ def plot_anatomy_neff_state(
     parent_window_side: float | None,
     title: str,
 ) -> Path:
-    """Draw Raw Anatomy, SVC Neff, and State on one shared coordinate extent."""
+    """Draw SVC-defined Anatomy, SVC Neff, and State on one shared coordinate extent."""
     anatomy_required = {"window_x", "window_y", "level1_region"}
     state_required = {"window_x", "window_y", "neff"}
     if missing := anatomy_required - set(anatomy):
@@ -411,7 +411,7 @@ def plot_anatomy_neff_state(
     axes = axes[0]
     colors = {"Tumor": "#C44E52", "Normal": "#59A14F", "Interface": "#F2A541", "Other": "#87929E"}
     _square_categories(axes[0], anatomy, "level1_region", anatomy_window_side, colors)
-    axes[0].set_title("Raw Anatomy 方窗")
+    axes[0].set_title("SVC Anatomy 方窗")
 
     neff = pd.to_numeric(state["neff"], errors="coerce")
     _square_values(axes[1], figure, state, neff, parent_window_side, "Neff")
