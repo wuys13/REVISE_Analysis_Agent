@@ -1,8 +1,8 @@
-# Formal REVISE mini delivery; analysis parameters are owned here.
+# Formal REVISE full delivery; analysis parameters are owned here.
 schema_version: 1
-output_dir: ../output/mini-acceptance/20260920/iST/batch
+output_dir: ../output/full-acceptance/iST/batch
 samples:
-- ../../REVISE/output/mini-acceptance/20260920/delivery/P2CRC_Xenium_mini/random/sample.yaml
+- ../../REVISE/results/acceptance-full/P2CRC_Xenium/random/sample.yaml
 analyses:
   reconstruction_impact:
     scopes:

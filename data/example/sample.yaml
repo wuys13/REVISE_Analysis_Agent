@@ -8,8 +8,6 @@ expression:
 columns:
   broad: Level1
   subtype: Level2
-label_aliases:
-  Mono_Macro: Mono/Macro
 spatial:
   key: spatial
   unit: micron

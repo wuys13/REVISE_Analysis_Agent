@@ -1,8 +1,8 @@
-# Formal REVISE mini delivery; analysis parameters are owned here.
+# Formal mini delivery; K-control enabled to verify missing-cluster capability.
 schema_version: 1
-output_dir: ../output/mini-acceptance/20260920/iST/batch
+output_dir: ../output/mini-acceptance/20260920/sST/batch
 samples:
-- ../../REVISE/output/mini-acceptance/20260920/delivery/P2CRC_Xenium_mini/random/sample.yaml
+- ../../REVISE/output/mini-acceptance/20260920/delivery/P2CRC_Visium_mini/default/sample.yaml
 analyses:
   reconstruction_impact:
     scopes:
@@ -21,7 +21,8 @@ analyses:
     gene_set_names: &id001
     - HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION
     pathway_auc_threshold: 0.01
-    membership_same_units: true
+    membership_same_units: false
+    raw_k_control: true
   spatial_autocorrelation:
     moran_n_neighbors: 6
     random_state: 42

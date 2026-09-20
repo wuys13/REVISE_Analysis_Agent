@@ -15,7 +15,8 @@ import json
 import numpy as np
 import pandas as pd
 
-from ._shared import DEFAULT_SCOPES, coordinates, deterministic_subset, save_json, save_table, unavailable
+from ._shared import (DEFAULT_SCOPES, coordinates, deterministic_subset, normalize_label,
+                      save_json, save_table, unavailable)
 from revise_analysis.methods.errors import PrerequisiteUnavailable
 
 from .impact_tables import changed_unit_summary, common_valid_delta, label_composition, anatomy_conditionals
@@ -87,10 +88,14 @@ def effective_parameters(sample: Any, overrides: dict | None = None) -> dict:
     scopes_value = supplied.get("scopes", DEFAULT_SCOPES)
     if isinstance(scopes_value, (str, bytes)) or not isinstance(scopes_value, (list, tuple)):
         raise ValueError("scopes must be a sequence of names, not a scalar")
-    scopes = list(scopes_value)
-    if (not scopes or any(not isinstance(x, str) or not x.strip() for x in scopes)
-            or len(scopes) != len(set(scopes)) or len(scopes) != len({_slug(x) for x in scopes})):
+    if not scopes_value or any(not isinstance(x, str) or not x.strip() for x in scopes_value):
         raise ValueError("scopes collide or are not unique non-empty names after artifact slug conversion")
+    # Scope spelling is a data label, not an artifact alias.  Normalize once
+    # and deduplicate equivalent entries so a configuration containing both
+    # ``Mono/Macro`` and ``Mono_Macro`` cannot duplicate observations/work.
+    scopes = list(dict.fromkeys(normalize_label(x) for x in scopes_value))
+    if len(scopes) != len({_slug(x) for x in scopes}):
+        raise ValueError("scopes collide after artifact slug conversion")
     old_window = supplied.get("window_side_microns")
     parent = supplied.get("parent_window_side_microns", old_window if old_window is not None else 40.0)
     for key in ("membership_same_units", "raw_k_control", "svc_leiden_baseline"):
@@ -116,7 +121,7 @@ def effective_parameters(sample: Any, overrides: dict | None = None) -> dict:
     parent_values = list(parent.values()) if isinstance(parent, dict) else [parent]
     if any(type(v) not in (int, float) or isinstance(v, bool) or not np.isfinite(float(v)) for v in parent_values):
         raise ValueError("parent_window_side_microns must contain finite numeric values")
-    parent = ({str(k): float(v) for k, v in parent.items()} if isinstance(parent, dict)
+    parent = ({normalize_label(str(k)): float(v) for k, v in parent.items()} if isinstance(parent, dict)
               else {scope: float(parent) for scope in scopes})
     if missing := [scope for scope in scopes if scope not in parent]:
         raise ValueError(f"parent_window_side_microns missing scopes: {missing}")
@@ -138,8 +143,8 @@ def effective_parameters(sample: Any, overrides: dict | None = None) -> dict:
         "gene_set_names": supplied.get("gene_set_names"),
         "pathway_auc_threshold": float(supplied.get("pathway_auc_threshold", .05)),
         "moran_n_neighbors": int(supplied.get("moran_n_neighbors", 6)),
-        "anatomy_tumor_label": str(supplied.get("anatomy_tumor_label", "Tumor")),
-        "anatomy_normal_label": str(supplied.get("anatomy_normal_label", "Intestinal Epithelial")),
+        "anatomy_tumor_label": normalize_label(str(supplied.get("anatomy_tumor_label", "Tumor"))),
+        "anatomy_normal_label": normalize_label(str(supplied.get("anatomy_normal_label", "Intestinal Epithelial"))),
         "svc_leiden_baseline": bool(supplied.get("svc_leiden_baseline", False)),
     }
     if result["geneset_path"]:
@@ -371,10 +376,10 @@ class ImpactWorkflow:
         cohort = self._scope("svc", scope)
         labels = self.state.get("svc_labels")
         if labels is None:
-            raise ValueError("SVC reconstruction labels unavailable")
+            raise PrerequisiteUnavailable("SVC reconstruction labels unavailable")
         ids = cohort.obs_names.intersection(labels.index)
         if ids.empty:
-            raise ValueError(f"no valid reconstructed labels in SVC scope {scope!r}")
+            raise PrerequisiteUnavailable(f"no valid reconstructed labels in SVC scope {scope!r}")
         return cohort[ids]
 
     def stage_input(self):
@@ -480,17 +485,40 @@ class ImpactWorkflow:
         if summaries:
             self._save_table(pd.DataFrame(summaries), "tables/partition_summary.csv")
         key = self.sample.subtype_key
-        if key not in self.sample.raw.obs:
+        key_missing = key not in self.sample.raw.obs
+        if key_missing:
             unavailable("raw_level2_baseline", f"Raw column {key!r} is unavailable", self.missing)
+        labels = (pd.Series(pd.NA, index=self.sample.raw.obs_names, dtype="string")
+                  if key_missing else self.sample.labels("raw", key))
+        valid = labels.dropna().rename("raw_level2")
+        coverage = []
+        for scope in self.parameters["scopes"]:
+            try:
+                cohort = self._scope("raw", scope)
+            except PrerequisiteUnavailable as exc:
+                unavailable(f"raw_level2_baseline:{scope}", str(exc), self.missing)
+                coverage.append({"scope": scope, "n_total_units": 0,
+                                 "n_valid_units": 0, "n_missing_units": 0,
+                                 "status": "unavailable"})
+                continue
+            valid_ids = cohort.obs_names.intersection(valid.index)
+            n_total = int(cohort.n_obs)
+            n_valid = int(len(valid_ids))
+            status = ("complete" if n_valid == n_total else
+                      ("unavailable" if n_valid == 0 else "partial"))
+            coverage.append({"scope": scope, "n_total_units": n_total,
+                             "n_valid_units": n_valid,
+                             "n_missing_units": n_total - n_valid,
+                             "status": status})
+        self._save_table(pd.DataFrame(coverage), "tables/raw_level2_baseline_coverage.csv")
+        if valid.empty:
+            if not key_missing:
+                unavailable("raw_level2_baseline", f"Raw column {key!r} has no valid labels", self.missing)
         else:
-            labels = self.sample.labels("raw", key)
-            if labels.isna().any():
-                unavailable("raw_level2_baseline", f"Raw column {key!r} contains missing values", self.missing)
-            else:
-                self.state["raw_level2"] = labels.astype(str)
-                self._save_table(labels.rename("raw_level2"), "tables/raw_level2_baseline.csv")
-                self._save_table(labels.value_counts().rename_axis("raw_level2").rename("n_units").reset_index(),
-                                 "tables/raw_level2_baseline_summary.csv")
+            self.state["raw_level2"] = valid
+            self._save_table(valid, "tables/raw_level2_baseline.csv")
+            self._save_table(valid.value_counts().rename_axis("raw_level2").rename("n_units").reset_index(),
+                             "tables/raw_level2_baseline_summary.csv")
 
     def stage_support(self):
         from revise_analysis.methods.regions import assign_anatomy_candidates, assign_square_windows, select_window_scale
@@ -525,7 +553,7 @@ class ImpactWorkflow:
         for scope in self.parameters["scopes"]:
             try:
                 svc_coords = coordinates(self._svc_parent(scope), self.sample.spatial_key)
-            except (KeyError, ValueError) as exc:
+            except (KeyError, ValueError, PrerequisiteUnavailable) as exc:
                 unavailable(f"window_support:svc:{scope}", str(exc), self.missing)
                 continue
             configured_side = self.parameters["parent_window_side_microns"][scope] / scale
@@ -615,9 +643,19 @@ class ImpactWorkflow:
                 windows["svc_leiden", scope] = svc_baseline
                 self._save_table(svc_baseline, f"tables/window_diversity_svc_leiden_baseline_{_slug(scope)}.csv")
             if "raw_level2" in self.state:
-                raw = self._scope("raw", scope)
-                labels = self.state["raw_level2"].reindex(raw.obs_names)
-                level2 = compute_window_diversity(coordinates(raw, self.sample.spatial_key), labels,
+                try:
+                    raw = self._scope("raw", scope)
+                except PrerequisiteUnavailable as exc:
+                    unavailable(f"window_diversity:raw_level2:{scope}", str(exc), self.missing)
+                    continue
+                valid_ids = raw.obs_names.intersection(self.state["raw_level2"].index)
+                if valid_ids.empty:
+                    unavailable(f"window_diversity:raw_level2:{scope}",
+                                "no valid Raw Level2 units in scope", self.missing)
+                    continue
+                raw_level2 = raw[valid_ids]
+                labels = self.state["raw_level2"].reindex(valid_ids)
+                level2 = compute_window_diversity(coordinates(raw_level2, self.sample.spatial_key), labels,
                     window_side_length=side_length, origin=self.state["origin"], min_units=self.parameters["min_window_units"],
                     n_draws=self.parameters["n_window_draws"], random_state=self.parameters["random_state"] + 17)
                 level2["label_system"] = "raw_level2"
@@ -687,16 +725,34 @@ class ImpactWorkflow:
         from revise_analysis.methods.regions import compute_window_diversity
         if reason := self._expression_reason("raw"):
             unavailable("raw_k_control", reason, self.missing)
+            self.state["raw_k_controls"] = {}
+            return
+        svc_labels = self.state.get("svc_labels")
+        if svc_labels is None or svc_labels.empty:
+            unavailable("raw_k_control", "SVC reconstruction labels unavailable", self.missing)
+            self.state["raw_k_controls"] = {}
             return
         controls = {}
         for scope in self.parameters["scopes"]:
+            raw = self.state.get("partition_cohorts", {}).get(("raw", scope))
+            prepared = self.state.get("prepared_graphs", {}).get(("raw", scope))
+            if raw is None or prepared is None:
+                unavailable(f"raw_k_control:{scope}", "main Raw baseline graph/cohort unavailable", self.missing)
+                continue
             try:
-                raw = self.state.get("partition_cohorts", {}).get(("raw", scope))
-                prepared = self.state.get("prepared_graphs", {}).get(("raw", scope))
-                if raw is None or prepared is None:
-                    unavailable(f"raw_k_control:{scope}", "main Raw baseline graph/cohort unavailable", self.missing)
-                    continue
-                target = int(self.state["svc_labels"].reindex(self._svc_parent(scope).obs_names).nunique())
+                svc_parent = self._svc_parent(scope)
+            except PrerequisiteUnavailable as exc:
+                unavailable(f"raw_k_control:{scope}", str(exc), self.missing)
+                continue
+            if ("svc", scope) not in self.state.get("windows", {}):
+                unavailable(f"raw_k_control:{scope}", "SVC target window unavailable", self.missing)
+                continue
+            target_labels = svc_labels.reindex(svc_parent.obs_names).dropna()
+            if target_labels.empty:
+                unavailable(f"raw_k_control:{scope}", "SVC target-scope labels unavailable", self.missing)
+                continue
+            target = int(target_labels.nunique())
+            try:
                 result = select_matched_k_partition(prepared, candidate_resolutions=self.parameters["matched_k_resolutions"],
                     target_k=target, main_resolution=self.parameters["resolution"])
                 self._save_table(result["candidates"], f"tables/raw_k_control_sweep_{_slug(scope)}.csv")

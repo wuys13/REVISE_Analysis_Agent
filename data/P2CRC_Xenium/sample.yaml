@@ -16,8 +16,6 @@ expression:
     matrix: X
     identity: unknown
     scale: unknown
-label_aliases:
-  Mono_Macro: Mono/Macro
 spatial:
   key: spatial
   unit: pixel

@@ -5,6 +5,7 @@ import pandas as pd
 
 from revise_analysis.reporting import render_report
 from revise_analysis.reporting.impact_reading import reading_summary
+from revise_analysis.reporting import report as report_module
 
 
 def test_static_report_reads_only_saved_artifacts(tmp_path: Path):
@@ -21,6 +22,25 @@ def test_static_report_reads_only_saved_artifacts(tmp_path: Path):
     assert report.name == "report.html"
     assert "raw" in text and "OmicVerse unavailable" in text
     assert "AnnData" not in text
+
+
+def test_rawbaseline_report_appends_level2_coverage_to_partition_fact(tmp_path: Path):
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    partition = tables / "partitions_raw_All.csv"
+    partition.write_text("partition\n0\n1\n", encoding="utf-8")
+    coverage = tables / "raw_level2_baseline_coverage.csv"
+    coverage.write_text(
+        "scope,n_total_units,n_valid_units,n_missing_units,status\nAll,12,9,3,partial\n",
+        encoding="utf-8",
+    )
+    artifacts = [
+        {"relative": "tables/partitions_raw_All.csv", "path": partition, "suffix": ".csv"},
+        {"relative": "tables/raw_level2_baseline_coverage.csv", "path": coverage, "suffix": ".csv"},
+    ]
+    fact = report_module._scope_fact("rawbaseline", "All", "All", artifacts, {})
+    assert "Raw baseline" in fact
+    assert "有效 9/12" in fact and "排除 3" in fact
 
 
 def test_static_report_uses_explicit_sections_and_keeps_failed_stage_evidence(tmp_path: Path):

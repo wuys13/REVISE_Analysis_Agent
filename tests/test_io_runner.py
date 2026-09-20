@@ -19,7 +19,7 @@ def sample_yaml(tmp_path):
     svc = AnnData(np.array([[0.5, 3], [1.5, 1]]), obs=pd.DataFrame({"Level1": ["Mono_Macro", "T"]}, index=["z", "b"]), var=pd.DataFrame(index=["G2", "G1"]))
     raw.write_h5ad(tmp_path / "raw.h5ad")
     svc.write_h5ad(tmp_path / "SVC.h5ad")
-    config = {"schema_version": 1, "sample_id": "sample", "files": {"raw": "raw.h5ad", "svc": "SVC.h5ad"}, "expression": {"scale": "untransformed_nonnegative"}, "label_aliases": {"Mono_Macro": "Mono/Macro"}}
+    config = {"schema_version": 1, "sample_id": "sample", "files": {"raw": "raw.h5ad", "svc": "SVC.h5ad"}, "expression": {"scale": "untransformed_nonnegative"}}
     path = tmp_path / "sample.yaml"
     path.write_text(yaml.safe_dump(config))
     return path
@@ -31,7 +31,7 @@ def test_loader_preserves_native_axes_and_values(sample_yaml):
     assert sample.svc.obs_names.tolist() == ["z", "b"]
     assert sample.svc.var_names.tolist() == ["G2", "G1"]
     np.testing.assert_array_equal(sample.svc.X, [[0.5, 3], [1.5, 1]])
-    assert sample.labels("svc").iloc[0] == "Mono/Macro"
+    assert sample.labels("svc").iloc[0] == "Mono_Macro"
     assert sample.svc.obs.Level1.iloc[0] == "Mono_Macro"
 
 

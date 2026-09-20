@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any
 import yaml
 
+from .analyses._shared import normalize_labels
+
 
 LINEAR_EXPRESSION_SCALE = "untransformed_nonnegative"
 _COMPATIBLE_LINEAR_SCALES = {"untransformed", LINEAR_EXPRESSION_SCALE}
@@ -102,8 +104,14 @@ class Sample:
 
     def labels(self, side: str, key: str | None = None):
         adata = getattr(self, side)
-        values = adata.obs[key or self.broad_key].astype("string")
-        return values.replace(self.config.get("label_aliases", {}))
+        selected_key = key or self.broad_key
+        values = adata.obs[selected_key]
+        # Reconstruction labels are scientific input identities.  They are
+        # copied verbatim; categorical cell-type labels use the one canonical
+        # slash-to-underscore representation and retain pandas missing values.
+        if selected_key == self.reconstruction_key:
+            return values.copy()
+        return normalize_labels(values)
 
 
 def safe_segment(value: str) -> str:

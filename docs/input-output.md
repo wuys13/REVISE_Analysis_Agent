@@ -15,15 +15,13 @@ columns:
   broad: Level1
   subtype: Level2
   reconstruction: SVC_cluster
-label_aliases:
-  Mono_Macro: Mono/Macro
 spatial:
   key: spatial
   unit: pixel
   microns_per_coordinate: 0.27380817798463214
 ```
 
-相对路径相对于声明它的 YAML。标签别名只用于分析视图，不改写输入文件。Raw `.X` 是上游交付的原始侧矩阵，SVC `.X` 是重建侧矩阵；“原始侧”不等于未经预处理的整数 counts。物理尺度仅在需要微米的分析中使用。
+相对路径相对于声明它的 YAML。读取 cell-type 标签时统一将 `/` 归一为 `_`，保留缺失值且不改写输入文件；重建标签按原值读取。Raw `.X` 是上游交付的原始侧矩阵，SVC `.X` 是重建侧矩阵；“原始侧”不等于未经预处理的整数 counts。物理尺度仅在需要微米的分析中使用。
 
 表达声明必须有来源依据。正式输入契约固定为 finite、nonnegative、unlogged linear `.X`；identity 已知且未声明旧 scale 时直接使用该契约。兼容旧 `untransformed` / `untransformed_nonnegative`，旧 `scale: unknown` 保持表达不可用；`log`、`log1p`、`log1p_nonnegative` 等旧 log 声明全部拒绝。identity 应描述真实矩阵来源。两侧声明互相独立，`.X` 缺失也可加载标签空间对象。确认的非负线性浮点值允许小数和小于 1 的值，不因数值很小而四舍五入、截断或改写；负值和非有限值由相应表达消费者拒绝。`identity: unknown` 允许标签与空间分析，但不能据此放行表达消费者。
 

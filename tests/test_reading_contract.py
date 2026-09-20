@@ -23,13 +23,13 @@ class _Links(HTMLParser):
 
 
 def test_availability_preserves_scope_slug_and_global_side_dependencies():
-    result = {'parameters': {'scopes': ['All', 'Fibroblast', 'Mono/Macro', 'T']},
+    result = {'parameters': {'scopes': ['All', 'Fibroblast', 'Mono_Macro', 'T']},
               'unavailable': [
                   {'component': 'state_Mono_Macro', 'reason': 'no_stable_threshold'},
                   {'component': 'partition:raw', 'reason': 'unknown expression'},
                   {'component': 'moran:svc:T', 'reason': 'unknown expression'},
               ]}
-    assert _topic_unavailable('state', 'Mono/Macro', result)
+    assert _topic_unavailable('state', 'Mono_Macro', result)
     for scope in ('All', 'Fibroblast', 'T'):
         assert not _topic_unavailable('state', scope, result)
     assert _topic_unavailable('rawbaseline', 'Fibroblast', result)

@@ -10,7 +10,7 @@
 
 Notebook 会显示每个阶段的 `pending/completed/partial/unavailable/error` 状态、中间产物、不可用原因、关键参数和最终参数来源。`result.outputs` 是当前输出 manifest，阅读辅助函数只读取 manifest 中声明且实际存在的文件，不把目录中的旧文件当作本次结果。源码 Notebook 有意保持未执行状态。
 
-默认样本是 `data/P2CRC_Xenium/sample.yaml`，默认 Notebook 输出是 `output/notebook/P2CRC_Xenium`。可通过 `SAMPLE_YAML`、可选 `PROJECT_YAML` 和 `OUTPUT_DIR` 覆盖；`RECONSTRUCTION_IMPACT_OVERRIDES` 接受 JSON 参数映射。项目只有一个样本时可从项目声明解析；项目含多个样本时必须显式设置 `SAMPLE_YAML`，不会静默选择第一个。
+正式P2运行设置 `PROJECT_YAML=configs/p2_project.yaml`，它直接指向REVISE发布的sample.yaml；hST/sST使用对应项目配置。未设置项目时的历史默认样本是 `data/P2CRC_Xenium/sample.yaml`，默认 Notebook 输出是 `output/notebook/P2CRC_Xenium`。可通过 `SAMPLE_YAML`、可选 `PROJECT_YAML` 和 `OUTPUT_DIR` 覆盖；`RECONSTRUCTION_IMPACT_OVERRIDES` 接受 JSON 参数映射。项目只有一个样本时可从项目声明解析；项目含多个样本时必须显式设置 `SAMPLE_YAML`，不会静默选择第一个。
 
 参数优先级为包默认值 < sample YAML < project YAML < Notebook override。修改 `OVERRIDES` 后先重新运行“应用参数并查看失效阶段”单元。该单元重新解析所有来源，把完整 `EFFECTIVE_PARAMETERS` 快照传给 `workflow.apply_parameters(...)`；这样删除 override 也会恢复 sample/project/default 值。已完成但依赖改动参数的阶段回到 `pending`，无关阶段保持当前。阶段运行前 Notebook 会再次解析并比较待应用参数，若与 `workflow.parameters` 不一致则要求先应用。`run_stage` 会拒绝消费失效前置，成功或科学不可用后按节调用 `render_figures(section)`，所以图与解释就近出现；末尾只保存清单、报告和综合事实，不补跑科学阶段。
 

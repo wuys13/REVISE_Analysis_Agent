@@ -2,6 +2,8 @@
 
 本仓库的初衷是让 Agent **直接完成下游分析，并能围绕新科学问题扩展分析**。从 REVISE 分支选择性迁入方法，是为了保留科学计算能力和经验，同时解除对重建 backend、旧载体和旧批处理的依赖。Impact 是目前最完整的阅读工作台，不代表全部能力。
 
+2026-09-20 双仓 mini 真实联测已完成，当前结果和限制见[现状与缺口](evidence-and-gaps.md)。正式项目配置为 `configs/p2_project.yaml`、`p1_hd_project.yaml`、`p2_visium_project.yaml`，直接引用 REVISE 发布的 sample.yaml。
+
 本说明从消费端组织审阅；[上游审阅入口](../../../REVISE/docs/development/reconstruction-analysis/cross-repo-review.md)从生产端组织。两者引用各自实现，不定义第二套协议。适用版本、证据和未完成工作见[现状与缺口](evidence-and-gaps.md)。
 
 ## 一条端到端主线
@@ -28,7 +30,7 @@ Raw/SVC 默认保留独立单位与基因轴；仅特定问题采用局部明确
 
 上游已有[四方法比较 Notebook](../../../REVISE/reproduce/case/assembly_comparison.ipynb)和[比较协议](../../../REVISE/docs/development/reconstruction-analysis/assembly-comparison-contract.md)。它读取 mean、random、within_cluster、outside_cluster 四种已生成表达，各自重新分群，与指定的历史 `SVC_cluster` 标签比较。该标签是比较基准，不是独立生物学真值；ARI/NMI 不自动决定赢家或默认方法。
 
-该实验采用共同 ID/基因范围，只适用于该比较问题，不改变本仓库默认独立分析规则。本轮保持其现有归属并链接复用；将来若迁入分析库，应单独处理依赖拆分、入口和输出协议，避免双重维护。真实四方法产物与比较尚待完成，不能用 fixture 图替代。
+该实验采用共同 ID/基因范围，只适用于该比较问题，不改变本仓库默认独立分析规则。本轮保持其现有归属并链接复用；将来若迁入分析库，应单独处理依赖拆分、入口和输出协议，避免双重维护。2026-09-20 已完成上游四方法 mini 真实运行，T/Mono_Macro/Fibroblast 共同 ID 为160/157/68、共同基因13088。见[执行版比较 Notebook](../../../REVISE/output/mini-acceptance/20260920/assembly/comparison/assembly_comparison.executed.ipynb)；全量与科学解释尚未验收。
 
 历史讨论中的 Recoverability、TLS 等属于未来方向；CCI、轨迹、富集已有部分可调用工具，但不是全部建立了正式流程或真实验收。旧审阅意见是设计背景，当前能力以源码和[证据边界](evidence-and-gaps.md)为准。
 

@@ -28,7 +28,6 @@ def _sample(*, reconstruction=True, unknown_expression=False):
                   {side: {"identity": "test", "scale": "untransformed_nonnegative"} for side in ("raw", "svc")})
     config = {
         "expression": expression,
-        "label_aliases": {"A": "aliased-broad-only"},
         "spatial": {"microns_per_coordinate": 1},
     }
     return Sample("unit", raw, svc, config, Path("sample.yaml"))
@@ -41,6 +40,114 @@ def test_reconstruction_labels_are_not_rewritten_by_broad_aliases(tmp_path):
     saved = pd.read_csv(tmp_path / "tables/reconstruction_label_summary.csv")
     assert set(saved.reconstruction_label) == {"A", "B", "C"}
     assert set(saved.label_role) == {"reconstructed_state_label"}
+
+
+def test_cell_type_labels_normalize_slashes_preserve_na_and_reconstruction_identity():
+    sample = _sample()
+    sample.raw.obs.loc["u0", "Level1"] = "Mono/Macro"
+    sample.raw.obs.loc["u1", "Level1"] = pd.NA
+    sample.svc.obs.loc["u0", "SVC_cluster"] = "A/B"
+
+    labels = sample.labels("raw", "Level1")
+    assert labels.loc["u0"] == "Mono_Macro"
+    assert pd.isna(labels.loc["u1"])
+    assert sample.labels("svc", "SVC_cluster").loc["u0"] == "A/B"
+
+
+def test_equivalent_scope_and_parent_window_keys_are_normalized_once():
+    parameters = impact.effective_parameters(
+        _sample(),
+        {"scopes": ["Mono/Macro", "Mono_Macro"],
+         "parent_window_side_microns": {"Mono/Macro": 40}},
+    )
+    assert parameters["scopes"] == ["Mono_Macro"]
+    assert parameters["parent_window_side_microns"] == {"Mono_Macro": 40.0}
+
+
+def test_raw_level2_partial_labels_are_scoped_to_valid_ids(tmp_path, monkeypatch):
+    sample = _sample(unknown_expression=True)
+    sample.raw.obs.loc["u3", "Level2"] = pd.NA
+    workflow = impact.ImpactWorkflow(
+        sample, tmp_path,
+        {"scopes": ["All"], "parent_window_side_microns": {"All": 100},
+         "min_window_units": 2, "n_window_draws": 1},
+        continue_on_error=True,
+    )
+    workflow.run_stage("input")
+    workflow.run_stage("baseline")
+    coverage = pd.read_csv(tmp_path / "tables/raw_level2_baseline_coverage.csv")
+    row = coverage.loc[coverage["scope"] == "All"].iloc[0]
+    assert (int(row.n_total_units), int(row.n_valid_units), int(row.n_missing_units)) == (12, 11, 1)
+    counts = pd.read_csv(tmp_path / "tables/raw_level2_baseline_summary.csv")
+    assert {"raw_level2", "n_units"}.issubset(counts)
+    assert "u3" not in workflow.state["raw_level2"].index
+
+    from revise_analysis.methods import regions
+    seen = []
+
+    def fake_diversity(coords, labels, **_):
+        seen.append((coords.index.tolist(), labels.index.tolist()))
+        return pd.DataFrame({"window_id": ["0_0"], "valid_window": [True],
+                             "n_units": [len(coords)], "neff": [1.0]})
+
+    monkeypatch.setattr(regions, "compute_window_diversity", fake_diversity)
+    workflow.run_stage("support")
+    workflow.run_stage("diversity")
+    assert not workflow.stage_errors
+    assert any(len(coords) == 11 and ids == coords for coords, ids in seen)
+
+
+def test_raw_level2_all_missing_keeps_scope_coverage_and_marks_unavailable(tmp_path):
+    sample = _sample(unknown_expression=True)
+    sample.raw.obs["Level2"] = pd.NA
+    workflow = impact.ImpactWorkflow(sample, tmp_path, {"scopes": ["All"]}, continue_on_error=True)
+    workflow.run_stage("baseline")
+    coverage = pd.read_csv(tmp_path / "tables/raw_level2_baseline_coverage.csv")
+    row = coverage.loc[coverage["scope"] == "All"].iloc[0]
+    assert (int(row.n_total_units), int(row.n_valid_units), int(row.n_missing_units)) == (12, 0, 12)
+    assert row.status == "unavailable"
+    assert not (tmp_path / "tables/raw_level2_baseline.csv").exists()
+    assert any(item["component"] == "raw_level2_baseline" for item in workflow.missing)
+
+
+def test_raw_k_control_is_unavailable_without_svc_labels_even_with_raw_baseline(tmp_path, monkeypatch):
+    sample = _sample(reconstruction=False)
+    workflow = impact.ImpactWorkflow(sample, tmp_path, {"scopes": ["All"], "raw_k_control": True},
+                                     continue_on_error=True)
+    monkeypatch.setattr(impact, "compute_partitions", lambda adata, **_: {
+        "labels": pd.Series(["0"] * adata.n_obs, index=adata.obs_names),
+        "summary": {"n_units": adata.n_obs, "n_clusters": 1},
+    })
+    workflow.run_stage("input")
+    workflow.run_stage("baseline")
+    assert ("raw", "All") in workflow.state["partition_cohorts"]
+    workflow._raw_k_control()
+    assert any(item["component"] == "raw_k_control" for item in workflow.missing)
+    assert not workflow.stage_errors
+
+
+def test_raw_k_control_does_not_hide_unexpected_runtime_error(tmp_path, monkeypatch):
+    from revise_analysis.methods import partition
+
+    sample = _sample()
+    workflow = impact.ImpactWorkflow(sample, tmp_path, {"scopes": ["All"], "raw_k_control": True},
+                                     continue_on_error=True)
+    workflow.run_stage("input")
+    workflow.state.update(
+        partition_cohorts={("raw", "All"): sample.raw},
+        prepared_graphs={("raw", "All"): object()},
+        windows={("svc", "All"): pd.DataFrame()},
+        origin=(0.0, 0.0), microns_per_coordinate=1.0,
+    )
+    for name in ("input", "baseline", "support", "diversity"):
+        workflow._record(name, "completed")
+    monkeypatch.setattr(partition, "select_matched_k_partition",
+                        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("k-control bug")))
+    workflow.stage_regions = workflow._raw_k_control
+    record = workflow.run_stage("regions")
+    assert record["status"] == "error"
+    assert workflow.stage_errors[0]["error_type"] == "RuntimeError"
+    assert "k-control bug" in workflow.stage_errors[0]["message"]
 
 
 def test_input_manifest_preserves_carrier_provenance(tmp_path):

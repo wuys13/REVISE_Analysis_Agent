@@ -20,7 +20,7 @@ def _sample() -> Sample:
     svc = raw[:5].copy()
     svc.X = svc.X + 1
     svc.obs["SVC_cluster"] = [str(i % 2) for i in range(svc.n_obs)]
-    return Sample("unit", raw, svc, {"expression": {side: {"identity": "test_expression", "scale": "untransformed_nonnegative"} for side in ("raw", "svc")}, "label_aliases": {"Mono_Macro": "Mono/Macro"}, "spatial": {"microns_per_coordinate": 1}}, Path("sample.yaml"))
+    return Sample("unit", raw, svc, {"expression": {side: {"identity": "test_expression", "scale": "untransformed_nonnegative"} for side in ("raw", "svc")}, "spatial": {"microns_per_coordinate": 1}}, Path("sample.yaml"))
 
 
 def test_impact_keeps_sides_independent_and_membership_is_explicit(tmp_path, monkeypatch):
@@ -164,10 +164,14 @@ def test_native_sampling_uses_distinct_side_random_streams(tmp_path, monkeypatch
     assert seen[0] != seen[1]
 
 
-def test_artifact_name_collisions_are_explicit(tmp_path):
+def test_equivalent_scope_spellings_are_deduplicated(tmp_path):
     import pytest
-    with pytest.raises(ValueError, match="collide"):
-        impact.run(_sample(), tmp_path, {"scopes": ["A/B", "A_B"]})
+    parameters = impact.effective_parameters(
+        _sample(), {"scopes": ["Mono/Macro", "Mono_Macro"],
+                    "parent_window_side_microns": {"Mono/Macro": 40}},
+    )
+    assert parameters["scopes"] == ["Mono_Macro"]
+    assert parameters["parent_window_side_microns"] == {"Mono_Macro": 40.0}
     with pytest.raises(ValueError, match="collide"):
         pathways.run(_sample(), tmp_path, {"gene_sets": {"A/B": ["g1"], "A_B": ["g2"]}})
 

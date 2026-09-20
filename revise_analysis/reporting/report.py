@@ -395,9 +395,12 @@ def _impact_paths(topic: str, scope: str | None, result: dict, by_relative: dict
         candidates = ["tables/input_overview.csv", "tables/reconstruction_label_summary.csv", "tables/reconstruction_labels_units.csv",
                       "figures/reconstruction_labels.png"]
     elif topic == "rawbaseline" and scope is None:
-        candidates = ["tables/raw_level2_baseline_summary.csv", "tables/raw_level2_baseline.csv", "tables/partition_summary.csv", "figures/partition_sizes.png"]
+        candidates = ["tables/raw_level2_baseline_summary.csv", "tables/raw_level2_baseline_coverage.csv",
+                      "tables/raw_level2_baseline.csv",
+                      "tables/partition_summary.csv", "figures/partition_sizes.png"]
     elif topic == "rawbaseline" and slug:
-        candidates = [f"tables/partitions_raw_{slug}.csv", f"tables/partitions_svc_{slug}.csv"]
+        candidates = [f"tables/partitions_raw_{slug}.csv", f"tables/partitions_svc_{slug}.csv",
+                      "tables/raw_level2_baseline_coverage.csv"]
     elif topic == "membership" and slug:
         candidates = [f"tables/membership_summary_{slug}.json", f"tables/membership_{slug}.csv",
                       f"tables/membership_contingency_{slug}.csv"]
@@ -554,18 +557,34 @@ def _scope_fact(topic: str, scope: str | None, scope_label: str, artifacts: list
         if parts:
             return "；".join(parts) + "。两侧对象范围独立，数量差不表示单位丢失。"
     if topic == "rawbaseline":
+        coverage = available.get("tables/raw_level2_baseline_coverage.csv")
+        coverage_text = None
+        if coverage is not None and {"scope", "n_total_units", "n_valid_units", "n_missing_units"}.issubset(coverage):
+            rows = coverage if slug is None else coverage.loc[coverage["scope"].astype(str) == str(scope)]
+            if not rows.empty:
+                coverage_text = "Raw Level2 覆盖：" + "；".join(
+                    f"{row.scope} 有效 {int(row.n_valid_units)}/{int(row.n_total_units)}，排除 {int(row.n_missing_units)}"
+                    for row in rows.itertuples(index=False)
+                ) + "。"
         if slug:
             partition = available.get(f"tables/partitions_raw_{slug}.csv")
             if partition is not None and "partition" in partition:
-                return f"{scope_label} 的 Raw baseline 使用 {len(partition)} 个实际入组单位，得到 {partition.partition.nunique(dropna=True)} 个 cluster。"
+                text = f"{scope_label} 的 Raw baseline 使用 {len(partition)} 个实际入组单位，得到 {partition.partition.nunique(dropna=True)} 个 cluster。"
+                return f"{text} {coverage_text}" if coverage_text else text
         partitions = available.get("tables/partition_summary.csv")
         if partitions is not None and {"side", "scope", "n_clusters"}.issubset(partitions):
-            return "；".join(f"{str(row.side).upper()} / {row.scope}：{row.n_clusters} 类" for row in partitions.itertuples()) + "。各 scope 单独计数。"
-        level2 = available.get("tables/raw_level2_baseline_summary.csv")
-        if level2 is not None and "n_units" in level2:
-            total = _complete_sum(level2, "n_units")
-            return (f"Raw Level2 baseline 保存 {len(level2)} 类，共 {int(total)} 个单位。" if total is not None
-                    else f"Raw Level2 baseline 保存 {len(level2)} 类，单位总数未知。")
+            text = "；".join(f"{str(row.side).upper()} / {row.scope}：{row.n_clusters} 类" for row in partitions.itertuples()) + "。各 scope 单独计数。"
+            return f"{text} {coverage_text}" if coverage_text else text
+        counts = available.get("tables/raw_level2_baseline_summary.csv")
+        count_text = None
+        if counts is not None and {"raw_level2", "n_units"}.issubset(counts):
+            total = _complete_sum(counts, "n_units")
+            count_text = (f"Raw Level2 baseline 保存 {len(counts)} 类，共 {int(total)} 个有效单位。"
+                          if total is not None else f"Raw Level2 baseline 保存 {len(counts)} 类，有效单位总数未知。")
+        if coverage_text:
+            return f"{count_text} {coverage_text}" if count_text else coverage_text
+        if count_text:
+            return count_text
     if topic == "membership" and slug:
         payload = jsons.get(f"tables/membership_summary_{slug}.json")
         summary = payload.get("summary") if isinstance(payload, dict) else None

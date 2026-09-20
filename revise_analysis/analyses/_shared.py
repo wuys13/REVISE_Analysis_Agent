@@ -9,7 +9,19 @@ import numpy as np
 import pandas as pd
 
 
-DEFAULT_SCOPES = ("All", "Fibroblast", "Mono/Macro", "T")
+DEFAULT_SCOPES = ("All", "Fibroblast", "Mono_Macro", "T")
+
+
+def normalize_labels(values: pd.Series) -> pd.Series:
+    """Normalize categorical labels without converting missing values to text."""
+    return values.astype("string").str.replace("/", "_", regex=False)
+
+
+def normalize_label(value: Any) -> Any:
+    """Normalize one configured label or scope while retaining scalar missingness."""
+    if value is None or pd.isna(value):
+        return value
+    return str(value).replace("/", "_")
 
 
 def analysis_parameters(parameters: dict | None, allowed: set[str]) -> dict:

@@ -57,15 +57,13 @@ def create_example(root: Path, *, sample_id: str = "example_reconstruction"):
     configs.mkdir(parents=True, exist_ok=True)
     generator = np.random.default_rng(42)
     genes = [f"G{i}" for i in range(600)]
-    broad = np.array(["Fibroblast", "Mono/Macro", "T", "Tumor", "Intestinal Epithelial", "B"])
+    broad = np.array(["Fibroblast", "Mono_Macro", "T", "Tumor", "Intestinal Epithelial", "B"])
     with tempfile.TemporaryDirectory(prefix=f".{sample_id}-", dir=data_root) as temporary:
         staging = Path(temporary)
         for side, n_units in (("raw", 240), ("svc", 210)):
             ids = ([f"u{i:04}" for i in range(n_units)] if side == "raw"
                    else [f"u{i:04}" for i in range(120)] + [f"new{i:04}" for i in range(90)])
             labels = broad[np.arange(n_units) % len(broad)]
-            if side == "svc":
-                labels = np.where(labels == "Mono/Macro", "Mono_Macro", labels)
             means = np.full((n_units, len(genes)), 0.25)
             for i in range(n_units):
                 start = (i % 6) * 60
@@ -94,7 +92,6 @@ def create_example(root: Path, *, sample_id: str = "example_reconstruction"):
                 for side in ("raw", "svc")
             },
             "columns": {"broad": "Level1", "subtype": "Level2", "reconstruction": "SVC_cluster"},
-            "label_aliases": {"Mono_Macro": "Mono/Macro"},
             "spatial": {"key": "spatial", "unit": "micron", "microns_per_coordinate": 1.0},
         }
         (staging / "sample.yaml").write_text(yaml.safe_dump(sample, sort_keys=False), encoding="utf-8")
