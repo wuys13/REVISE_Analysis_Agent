@@ -2,7 +2,7 @@
 
 [协同入口](README.md) · [协议与代码](contract-and-code.md) · [上游四表验收及服务器命令](../../../REVISE/docs/development/reconstruction-analysis/acceptance.md) · [联合机器记录（当前见 closeout）](../../../REVISE/docs/development/reconstruction-analysis/verification-mini-2026-09-20.json)
 
-正式主链保持 REVISE 发布三文件 → 本仓库独立加载 → Notebook/batch/report 共用流程。三类路线依据字段、表达身份和坐标判断能力，没有新增平台分支。当前基线：REVISE `464ee26ac22978c3994e40af50325413e70cef13`，本仓库 `3e70ab364f89f9e24e981e3e9239e7fe563138a6`；验收包含本轮未提交修改。
+正式主链保持 REVISE 发布三文件 → 本仓库独立加载 → Notebook/batch/report 共用流程。三类路线依据字段、表达身份和坐标判断能力，没有新增平台分支。当前基线：REVISE `464ee26ac22978c3994e40af50325413e70cef13`，本仓库 `3e70ab364f89f9e24e981e3e9239e7fe563138a6`；本轮修改已提交并推送：REVISE `467af8b9a104328fba8db0e786471620eab4150f`，本仓库 `4c4278b3adde1907fd66474ff97957a9c7dab790`。
 
 ## 本轮实际修改与简化
 
