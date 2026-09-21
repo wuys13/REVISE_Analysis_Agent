@@ -6,7 +6,7 @@
 
 已建立：
 
-[REVISE_Analysis_Agent](/Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE_Analysis_Agent)
+[REVISE_Analysis_Agent](../README.md)
 
 包括：
 
@@ -90,15 +90,15 @@ Impact 主线已经包括：
 
 相关说明见：
 
-[Impact 方法说明](/Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE_Analysis_Agent/docs/analyses/reconstruction-impact.md)
+[Impact 方法说明](../docs/analyses/reconstruction-impact.md)
 
-[分析能力索引](/Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE_Analysis_Agent/docs/analyses/README.md)
+[分析能力索引](../docs/analyses/README.md)
 
 ### 5. Notebook 和 Web 审阅
 
 已完成连续 Notebook：
 
-[01_reconstruction_impact.ipynb](/Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE_Analysis_Agent/notebooks/01_reconstruction_impact.ipynb)
+[01_reconstruction_impact.ipynb](../notebooks/01_reconstruction_impact.ipynb)
 
 它保留了：
 
@@ -137,7 +137,7 @@ Notebook 已在目标仓库的独立环境中执行过。静态报告只读取�
 
 示例结果见：
 
-[合成 Impact 报告](/Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE_Analysis_Agent/output/example/reconstruction_impact/report.html)
+[合成 Impact 报告](../output/example/reconstruction_impact/report.html)
 
 ## 二、还没有完成
 
@@ -160,7 +160,7 @@ P1CRC VisiumHD 的历史 Raw/SVC 文件虽然已经完成结构检查，但目�
 
 对应限制写在：
 
-[迁移与验收](/Users/stephen/Documents/wuyushuai_project/wuyushuai_research_project/REVISE_Analysis_Agent/docs/migration.md)
+[迁移与验收](../docs/migration.md)
 
 ### 2. 尚未完成真实数据的科学验收
 

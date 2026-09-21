@@ -1,5 +1,9 @@
 # 工作入口
 
+- 公共工作区背景：[根目录 README](../../README.md)。
+- 本地与远程协同协议：[协同协议](../../docs/collaboration.md)。
+- 本仓库与 `REVISE` 必须保持在共同父目录下；配置中的 `../../REVISE/` 和交付清单中的
+  `REVISE/`、`REVISE_Analysis_Agent/` 是当前本地与远程布局的相对入口。
 - 仓库职责与依赖方向：`docs/architecture.md`。
 - 文件、调用与结果协议：`docs/input-output.md`。
 - 选择分析及方法定义：`docs/analyses/README.md`。

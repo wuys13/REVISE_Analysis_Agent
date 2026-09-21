@@ -2,6 +2,14 @@
 
 独立的重建后分析基础设施。输入 Raw 与统一 SVC，输出可继续计算、探索和审阅的结果。REVISE／上游负责重建和输入准备；这里负责分析。
 
+## 双仓库工作区
+
+本仓库与上游 `REVISE` 在共同父目录下并列放置。`configs/*project.yaml` 使用
+相对路径消费兄弟仓库中的交付样本；远程工作区沿用同名的
+`REVISE/` 与 `REVISE_Analysis_Agent/` 目录。公共工作区背景见
+[根目录 README](../../README.md)，本地与远程协同规则见
+[协同协议](../../docs/collaboration.md)。
+
 ## 从这里开始
 
 | 要做什么 | 入口 |
