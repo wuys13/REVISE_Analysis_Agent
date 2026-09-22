@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import anndata as ad
 import numpy as np
@@ -7,6 +8,7 @@ import pytest
 
 from revise_analysis.io import Sample
 from revise_analysis.analyses import reconstruction_impact as impact
+from revise_analysis.analyses._shared import unit_id_digest
 from revise_analysis.analyses.impact_tables import anatomy_conditionals, common_valid_delta
 from revise_analysis.methods import regions
 
@@ -111,6 +113,31 @@ def test_scope_before_sampling_and_unavailable_recovers(tmp_path, monkeypatch):
     s.raw = ad.concat([s.raw, extras])
     w.run_stage('baseline')
     assert cohorts[-1] == cohorts[0]
+
+
+def test_cohort_manifest_replaces_invalidated_sampling_records(tmp_path, monkeypatch):
+    s = sample()
+    s.config['expression'] = {side: {'identity': 'fixture'} for side in ('raw', 'svc')}
+    w = impact.ImpactWorkflow(s, tmp_path, {'scopes': ['All'], 'sample_n_units': 5})
+    monkeypatch.setattr(impact, 'compute_partitions', lambda data, **kw: {
+        'labels': pd.Series('a', index=data.obs_names), 'summary': {'n_units': data.n_obs}})
+    w.run_stage('input')
+    w.run_stage('baseline')
+    manifest = json.loads((tmp_path / 'tables/cohort_manifest.json').read_text())
+    records = manifest['records']
+    baseline = next(row for row in records if row['stage'] == 'baseline')
+    assert baseline['selected_n_units'] == 5
+    assert baseline['selection_random_state'] == 42
+    assert baseline['method_random_state'] == 42
+    assert baseline['selected_unit_ids_sha256'] == unit_id_digest(
+        w.state['partition_cohorts']['raw', 'All'].obs_names)
+    w.apply_parameters({'sample_n_units': 4})
+    manifest = json.loads((tmp_path / 'tables/cohort_manifest.json').read_text())
+    assert not any(row['stage'] == 'baseline' for row in manifest['records'])
+    w.run_stage('baseline')
+    manifest = json.loads((tmp_path / 'tables/cohort_manifest.json').read_text())
+    baseline = next(row for row in manifest['records'] if row['stage'] == 'baseline')
+    assert baseline['selected_n_units'] == 4
 
 
 def test_gain_extent_keeps_two_real_unit_denominators():

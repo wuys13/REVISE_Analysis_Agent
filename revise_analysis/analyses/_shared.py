@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import hashlib
 import json
 
 import numpy as np
@@ -10,6 +11,7 @@ import pandas as pd
 
 
 DEFAULT_SCOPES = ("All", "Fibroblast", "Mono_Macro", "T")
+UNIT_ID_HASH_CONTRACT = "sha256-json-utf8-ordered-v1"
 
 
 def normalize_labels(values: pd.Series) -> pd.Series:
@@ -51,6 +53,13 @@ def deterministic_subset(adata: Any, sample_n_units: int | None, random_state: i
     # Sampling each side independently avoids turning an optional pairing into a prerequisite.
     chosen = np.random.default_rng(random_state).choice(adata.n_obs, size=sample_n_units, replace=False)
     return adata[np.sort(chosen)].copy()
+
+
+def unit_id_digest(values: Any) -> str:
+    """Hash an ordered unit-ID cohort with an explicit, portable encoding."""
+    payload = json.dumps([str(value) for value in values], ensure_ascii=False,
+                         separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
 def save_table(table: pd.DataFrame | pd.Series, output_dir: Path, relative: str, outputs: dict) -> Path:

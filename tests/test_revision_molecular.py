@@ -7,6 +7,7 @@ import pytest
 from anndata import AnnData
 
 from revise_analysis.io import Sample
+from revise_analysis.analyses._shared import deterministic_subset, unit_id_digest
 from revise_analysis.analyses.impact_molecular import run_molecular, aggregate_programs
 
 
@@ -62,3 +63,22 @@ def test_molecular_provider_execution_errors_propagate_with_prior_native_tables(
         run_molecular(workflow)
     assert 'tables/moran_raw_All.csv' in saved
     assert not any('unexpected provider' in item['reason'] for item in workflow.missing)
+
+
+def test_molecular_records_actual_sampled_cohort_identity(monkeypatch):
+    from revise_analysis.analyses import pathway_activity, spatial_autocorrelation
+    monkeypatch.setattr(pathway_activity, 'compute_pathway_scores', lambda adata, **kw: {
+        'scores': pd.Series(1., index=adata.obs_names),
+        'metadata': {'rank_cutoff': 2}, 'coverage': {'fraction_present': 1.}})
+    monkeypatch.setattr(spatial_autocorrelation, 'compute_moran', lambda adata, **kw: pd.DataFrame({
+        'gene_id': adata.var_names, 'moran': .1, 'status': 'computed'}))
+    workflow, _ = make_workflow()
+    records = []
+    workflow._record_cohort = lambda **record: records.append(record)
+    run_molecular(workflow)
+    record = next(row for row in records
+                  if row['component'] == 'moran' and row['side'] == 'raw' and row['scope'] == 'All')
+    expected = deterministic_subset(workflow.sample.raw, 3, 42)
+    assert record['selection_random_state'] == 42
+    assert record['eligible'].n_obs == 8 and record['selected'].n_obs == 3
+    assert unit_id_digest(record['selected'].obs_names) == unit_id_digest(expected.obs_names)

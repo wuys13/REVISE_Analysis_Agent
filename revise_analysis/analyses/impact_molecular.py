@@ -39,6 +39,12 @@ def _input_reason(adata, spatial_key):
     return None
 
 
+def _record_cohort(workflow, **kwargs):
+    recorder = getattr(workflow, '_record_cohort', None)
+    if callable(recorder):
+        recorder(**kwargs)
+
+
 def run_molecular(workflow):
     """Score a fixed union cohort once per side/program; never score a Region."""
     from .pathway_activity import compute_pathway_scores, resolve_gene_sets
@@ -54,8 +60,14 @@ def run_molecular(workflow):
                 unavailable(component, reason, workflow.missing)
                 continue
             try:
-                cohort = deterministic_subset(_cohort(workflow, side, scope), params['sample_n_units'],
-                                              params['random_state'] + (side == 'svc'))
+                eligible = _cohort(workflow, side, scope)
+                seed = params['random_state'] + (side == 'svc')
+                cohort = deterministic_subset(eligible, params['sample_n_units'], seed)
+                _record_cohort(workflow, component='moran', side=side, scope=scope,
+                               eligible=eligible, selected=cohort,
+                               selection_method=('all_eligible' if cohort.n_obs == eligible.n_obs
+                                                 else 'deterministic_without_replacement'),
+                               selection_random_state=seed)
             except PrerequisiteUnavailable as exc:
                 unavailable(component, str(exc), workflow.missing)
                 continue
@@ -123,7 +135,14 @@ def run_molecular(workflow):
             unavailable(f'pathway:{side}', 'broad-label column unavailable for scoring scopes', workflow.missing)
             continue
         ids = full.obs_names if 'All' in params['scopes'] else broad.index[broad.isin(params['scopes'])]
-        cohort = deterministic_subset(full[ids], params['sample_n_units'], params['random_state'] + (side == 'svc'))
+        eligible = full[ids]
+        seed = params['random_state'] + (side == 'svc')
+        cohort = deterministic_subset(eligible, params['sample_n_units'], seed)
+        _record_cohort(workflow, component='pathway', side=side, scope='|'.join(params['scopes']),
+                       eligible=eligible, selected=cohort,
+                       selection_method=('all_eligible' if cohort.n_obs == eligible.n_obs
+                                         else 'deterministic_without_replacement'),
+                       selection_random_state=seed, method_random_state=params['random_state'])
         if reason := _input_reason(cohort, sample.spatial_key):
             unavailable(f'pathway:{side}', reason, workflow.missing)
             continue

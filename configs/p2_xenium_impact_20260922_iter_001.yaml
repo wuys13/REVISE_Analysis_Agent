@@ -1,0 +1,27 @@
+# P2 Xenium full random reconstruction delivery; one isolated Impact run.
+schema_version: 1
+output_dir: ../output/p2-xenium-impact-20260922/iter-001
+samples:
+- ../../REVISE/results/p2-xenium-impact-20260922/iter-001/P2CRC_Xenium/random/sample.yaml
+analyses:
+  reconstruction_impact:
+    scopes:
+    - All
+    - Fibroblast
+    - Mono_Macro
+    - T
+    random_state: 42
+    anatomy_window_side_microns: 40.0
+    window_side_microns: 40.0
+    min_window_units: 4
+    n_window_draws: 200
+    region_n_bootstrap: 500
+    sample_n_units: 30000
+    geneset_path: ../resources/h.all.v2025.1.Hs.symbols.gmt
+    gene_set_names:
+    - HALLMARK_EPITHELIAL_MESENCHYMAL_TRANSITION
+    pathway_auc_threshold: 0.01
+    moran_n_neighbors: 6
+    membership_same_units: true
+    raw_k_control: false
+    svc_leiden_baseline: false

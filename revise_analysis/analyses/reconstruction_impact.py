@@ -15,8 +15,9 @@ import json
 import numpy as np
 import pandas as pd
 
-from ._shared import (DEFAULT_SCOPES, coordinates, deterministic_subset, normalize_label,
-                      save_json, save_table, unavailable)
+from ._shared import (DEFAULT_SCOPES, UNIT_ID_HASH_CONTRACT, coordinates,
+                      deterministic_subset, normalize_label, save_json, save_table,
+                      unavailable, unit_id_digest)
 from revise_analysis.methods.errors import PrerequisiteUnavailable
 
 from .impact_tables import changed_unit_summary, common_valid_delta, label_composition, anatomy_conditionals
@@ -180,6 +181,7 @@ class ImpactWorkflow:
         self.stage_records: list[dict] = []
         self.stage_artifacts: dict[str, list[str]] = {name: [] for name in STAGE_ORDER}
         self.state: dict[str, Any] = {}
+        self.cohort_records: list[dict] = []
         self._figure_sections: dict[str, str] = {}
         self._active_stage: str | None = None
         self.stage_records = [{"stage": name, "status": "pending", "artifacts": []} for name in STAGE_ORDER]
@@ -210,6 +212,9 @@ class ImpactWorkflow:
             self._record(name, "pending")
         self.missing[:] = [row for row in self.missing if row.get("stage") not in affected]
         self.stage_errors[:] = [row for row in self.stage_errors if row.get("stage") not in affected]
+        self.cohort_records[:] = [row for row in self.cohort_records if row.get("stage") not in affected]
+        if "tables/cohort_manifest.json" in self.outputs:
+            self._write_cohort_manifest()
         # Some plots display more than one scientific branch. Drop their registration
         # when either input is stale; disk files are never used to discover results.
         sections = affected - {"figures"}
@@ -339,6 +344,45 @@ class ImpactWorkflow:
         if self._active_stage and relative not in self.stage_artifacts[self._active_stage]:
             self.stage_artifacts[self._active_stage].append(relative)
 
+    def _write_cohort_manifest(self, *, register=False):
+        value = {
+            "schema_version": 1,
+            "sample_id": self.sample.sample_id,
+            "hash_contract": UNIT_ID_HASH_CONTRACT,
+            "records": deepcopy(self.cohort_records),
+        }
+        if register:
+            self._save_json(value, "tables/cohort_manifest.json")
+        else:
+            save_json(value, self.output_dir, "tables/cohort_manifest.json", self.outputs)
+
+    def _record_cohort(self, *, component, side, scope, eligible, selected,
+                       selection_method, selection_random_state=None,
+                       method_random_state=None):
+        """Persist the exact ordered cohort identity without exposing unit IDs."""
+        eligible_ids = eligible.obs_names
+        selected_ids = selected.obs_names
+        record = {
+            "stage": self._active_stage,
+            "component": component,
+            "side": side,
+            "scope": scope,
+            "eligible_n_units": int(len(eligible_ids)),
+            "selected_n_units": int(len(selected_ids)),
+            "selection_method": selection_method,
+            "selection_random_state": selection_random_state,
+            "selection_seed_applied": selection_method == "deterministic_without_replacement",
+            "method_random_state": method_random_state,
+            "eligible_unit_ids_sha256": unit_id_digest(eligible_ids),
+            "selected_unit_ids_sha256": unit_id_digest(selected_ids),
+        }
+        identity = (record["stage"], component, side, scope)
+        self.cohort_records[:] = [row for row in self.cohort_records
+                                  if (row.get("stage"), row.get("component"), row.get("side"),
+                                      row.get("scope")) != identity]
+        self.cohort_records.append(record)
+        self._write_cohort_manifest()
+
     def _scope(self, side: str, scope: str, *, adata=None):
         data = getattr(self.sample, side) if adata is None else adata
         if scope == "All":
@@ -383,6 +427,7 @@ class ImpactWorkflow:
         return cohort[ids]
 
     def stage_input(self):
+        self._write_cohort_manifest(register=True)
         source = Path(self.sample.source).resolve()
         files = self.sample.config.get("files", {})
         resolved_files = {}
@@ -464,8 +509,15 @@ class ImpactWorkflow:
                 continue
             for scope in self.parameters["scopes"]:
                 try:
-                    cohort = deterministic_subset(self._scope(side, scope), self.parameters["sample_n_units"],
-                                                  self.parameters["random_state"] + (side == "svc"))
+                    eligible = self._scope(side, scope)
+                    seed = self.parameters["random_state"] + (side == "svc")
+                    cohort = deterministic_subset(eligible, self.parameters["sample_n_units"], seed)
+                    self._record_cohort(component="partition", side=side, scope=scope,
+                                        eligible=eligible, selected=cohort,
+                                        selection_method=("all_eligible" if cohort.n_obs == eligible.n_obs
+                                                          else "deterministic_without_replacement"),
+                                        selection_random_state=seed,
+                                        method_random_state=self.parameters["random_state"])
                     result = compute_partitions(
                         cohort, resolution=self.parameters["resolution"], n_top_genes=self.parameters["n_top_genes"],
                         random_state=self.parameters["random_state"],
@@ -844,6 +896,11 @@ class ImpactWorkflow:
             if common.empty:
                 unavailable(f"membership:{scope}", "no common unit IDs", self.missing)
                 continue
+            raw_cohort = self.state.get("partition_cohorts", {}).get(("raw", scope))
+            if raw_cohort is not None:
+                self._record_cohort(component="membership", side="raw_svc_common", scope=scope,
+                                    eligible=raw_cohort, selected=raw_cohort[common],
+                                    selection_method="intersection_by_shared_ids")
             comparison = compare_membership(raw.loc[common], svc.loc[common])
             coords = coordinates(self.sample.raw, self.sample.spatial_key).reindex(comparison.assignments.index)
             changed = coords.join(comparison.assignments)
