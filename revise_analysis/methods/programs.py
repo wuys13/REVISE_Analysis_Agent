@@ -15,6 +15,7 @@ import pandas as pd
 from scipy import sparse
 
 from .errors import PrerequisiteUnavailable
+from .omicverse_aucell_adapter import audited_fast_rank
 
 
 def _require_omicverse():
@@ -73,11 +74,14 @@ def compute_pathway_scores(adata, genes: Sequence[str], *, score_name: str = "EM
     work = adata.copy()
     if not sparse.issparse(work.X):
         work.X = sparse.csr_matrix(work.X)
-    omicverse.single.geneset_aucell(adata=work, geneset_name=score_name, geneset=overlapping, AUC_threshold=float(auc_threshold), seed=int(seed))
+    with audited_fast_rank(omicverse) as memory_adapter:
+        omicverse.single.geneset_aucell(adata=work, geneset_name=score_name, geneset=overlapping, AUC_threshold=float(auc_threshold), seed=int(seed))
+    if memory_adapter.get("call_count") != 1:
+        raise RuntimeError("Audited OmicVerse fast_rank adapter must be called exactly once")
     score_key = f"{score_name}_aucell"
     if score_key not in work.obs:
         raise RuntimeError(f"AUCell did not create {score_key!r}")
     scores = pd.Series(work.obs[score_key].to_numpy(dtype=float), index=work.obs_names, name=score_name)
     if not np.isfinite(scores.to_numpy()).all():
         raise RuntimeError(f"AUCell returned non-finite scores in {score_key!r}")
-    return {"scores": scores, "coverage": coverage, "metadata": {**provider, "score_name": score_name, "score_key": score_key, "auc_threshold": float(auc_threshold), "effective_rank_fraction": effective_fraction, "rank_cutoff": rank_cutoff, "seed": int(seed)}}
+    return {"scores": scores, "coverage": coverage, "metadata": {**provider, "score_name": score_name, "score_key": score_key, "auc_threshold": float(auc_threshold), "effective_rank_fraction": effective_fraction, "rank_cutoff": rank_cutoff, "seed": int(seed), "memory_adapter": memory_adapter}}
