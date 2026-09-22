@@ -29,6 +29,14 @@ EXPECTED_SCOPES = ["All", "Fibroblast", "Mono_Macro", "T"]
 EXPECTED_ANALYSIS = "reconstruction_impact"
 EXPECTED_CONFIG = Path("configs/p2_xenium_impact_20260922_iter_001.yaml")
 BASELINE_CONFIG = Path("configs/p2_full_project.yaml")
+DIAGNOSTICS = {
+    "raw-k-control": {
+        "config": Path("configs/p2_xenium_impact_20260922_iter_002.yaml"),
+        "iteration": "iter-002",
+        "producer_iteration": DEFAULT_ITERATION,
+        "parameter_overrides": {"raw_k_control": True},
+    },
+}
 PACKAGE_NAMES = (
     "revise-analysis-agent", "anndata", "numpy", "pandas", "scipy", "scanpy",
     "omicverse", "gseapy", "torch", "nbconvert",
@@ -98,14 +106,56 @@ def normalized_parameters(parameters: dict) -> dict:
     return value
 
 
-def require_frozen_parameters(parameters: dict, repo: Path) -> None:
+def diagnostic_specification(diagnostic: str | None) -> dict | None:
+    if diagnostic is None:
+        return None
+    try:
+        return DIAGNOSTICS[diagnostic]
+    except KeyError as exc:
+        raise ValueError(f"unsupported Impact diagnostic: {diagnostic}") from exc
+
+
+def selected_config_path(repo: Path, config: str | None, diagnostic: str | None) -> Path:
+    specification = diagnostic_specification(diagnostic)
+    return (Path(config) if config else repo /
+            (specification["config"] if specification else EXPECTED_CONFIG))
+
+
+def diagnostic_details(repo: Path, diagnostic: str | None) -> dict | None:
+    specification = diagnostic_specification(diagnostic)
+    if specification is None:
+        return None
+    return {
+        "name": diagnostic,
+        "frozen_baseline_config": str((repo / BASELINE_CONFIG).resolve()),
+        "allowed_parameter_difference": {
+            key: {"frozen_baseline": False, "diagnostic": value}
+            for key, value in specification["parameter_overrides"].items()
+        },
+        "execution_scope": "full Impact run; resume is unsupported",
+    }
+
+
+def require_frozen_parameters(parameters: dict, repo: Path, *, diagnostic: str | None = None) -> None:
     baseline = read_yaml(repo / BASELINE_CONFIG)["analyses"][EXPECTED_ANALYSIS]
     expected = normalized_parameters(baseline)
+    specification = diagnostic_specification(diagnostic)
+    if specification is not None:
+        expected.update(specification["parameter_overrides"])
     actual = normalized_parameters(parameters)
-    if actual != expected:
-        changed = sorted(key for key in set(actual) | set(expected)
-                         if actual.get(key) != expected.get(key))
-        raise ValueError(f"Impact parameters differ from the frozen P2 full baseline: {changed}")
+    boolean_mismatches = [
+        key for key, value in (specification or {}).get("parameter_overrides", {}).items()
+        if isinstance(value, bool) and parameters.get(key) is not value
+    ]
+    if actual != expected or boolean_mismatches:
+        changed = sorted({key for key in set(actual) | set(expected)
+                          if actual.get(key) != expected.get(key)} | set(boolean_mismatches))
+        if specification is None:
+            raise ValueError(f"Impact parameters differ from the frozen P2 full baseline: {changed}")
+        raise ValueError(
+            f"Impact parameters differ from frozen P2 baseline outside diagnostic "
+            f"{diagnostic!r}; only {specification['parameter_overrides']} is allowed: {changed}"
+        )
 
 
 def require_clean_worktree(identity: dict) -> None:
@@ -135,8 +185,21 @@ def expected_run_paths(repo: Path, iteration: str, producer_iteration: str) -> t
 
 
 def validate_project(config_path: Path, repo: Path, *, require_inputs: bool,
-                     iteration=DEFAULT_ITERATION, producer_iteration=DEFAULT_ITERATION) -> dict:
+                     iteration=DEFAULT_ITERATION, producer_iteration=DEFAULT_ITERATION,
+                     diagnostic: str | None = None) -> dict:
     config_path = config_path.expanduser().resolve()
+    specification = diagnostic_specification(diagnostic)
+    if specification is not None:
+        if iteration != specification["iteration"]:
+            raise ValueError(
+                f"diagnostic {diagnostic!r} must use analysis iteration "
+                f"{specification['iteration']}"
+            )
+        if producer_iteration != specification["producer_iteration"]:
+            raise ValueError(
+                f"diagnostic {diagnostic!r} must use producer iteration "
+                f"{specification['producer_iteration']}"
+            )
     config = read_yaml(config_path)
     analyses = config.get("analyses")
     if not isinstance(analyses, dict) or list(analyses) != [EXPECTED_ANALYSIS]:
@@ -144,7 +207,7 @@ def validate_project(config_path: Path, repo: Path, *, require_inputs: bool,
     parameters = analyses[EXPECTED_ANALYSIS]
     if parameters.get("scopes") != EXPECTED_SCOPES:
         raise ValueError(f"Impact scopes must be {EXPECTED_SCOPES}")
-    require_frozen_parameters(parameters, repo)
+    require_frozen_parameters(parameters, repo, diagnostic=diagnostic)
     samples = config.get("samples")
     if not isinstance(samples, list) or len(samples) != 1:
         raise ValueError("project must declare exactly one sample")
@@ -180,6 +243,7 @@ def validate_project(config_path: Path, repo: Path, *, require_inputs: bool,
         "config_path": config_path, "config": config, "parameters": parameters,
         "output_dir": output_dir, "sample_yaml": sample_yaml, "sample_id": sample_id,
         "raw": raw, "svc": svc, "geneset_path": geneset_path,
+        "diagnostic": diagnostic_details(repo, diagnostic),
     }
 
 
@@ -237,6 +301,7 @@ def base_receipt(args, preflight: dict, repository: dict) -> dict:
         "task_id": TASK_ID,
         "iteration": args.iteration,
         "producer_iteration": args.producer_iteration,
+        "diagnostic": preflight["diagnostic"],
         "owner": "REVISE_Analysis_Agent",
         "upstream": "REVISE producer P2CRC_Xenium/random",
         "downstream": "independent scientific review gate",
@@ -262,10 +327,11 @@ def base_receipt(args, preflight: dict, repository: dict) -> dict:
 
 def execute(args) -> dict:
     repo = Path(__file__).resolve().parents[1]
-    config_path = Path(args.config) if args.config else repo / EXPECTED_CONFIG
+    config_path = selected_config_path(repo, args.config, args.diagnostic)
     preflight = validate_project(config_path, repo, require_inputs=True,
                                  iteration=args.iteration,
-                                 producer_iteration=args.producer_iteration)
+                                 producer_iteration=args.producer_iteration,
+                                 diagnostic=args.diagnostic)
     repository = git_identity(repo)
     require_clean_worktree(repository)
     run_dir = preflight["output_dir"] / "_run"
@@ -334,17 +400,19 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("preflight", "run"))
     parser.add_argument("--config")
+    parser.add_argument("--diagnostic", choices=tuple(DIAGNOSTICS))
     parser.add_argument("--iteration", default=DEFAULT_ITERATION)
     parser.add_argument("--producer-iteration", default=DEFAULT_ITERATION)
     parser.add_argument("--execution-location", default=socket.gethostname())
     parser.add_argument("--qz-notebook")
     args = parser.parse_args(argv)
     repo = Path(__file__).resolve().parents[1]
-    config_path = Path(args.config) if args.config else repo / EXPECTED_CONFIG
+    config_path = selected_config_path(repo, args.config, args.diagnostic)
     if args.command == "preflight":
         value = validate_project(config_path, repo, require_inputs=True,
                                  iteration=args.iteration,
-                                 producer_iteration=args.producer_iteration)
+                                 producer_iteration=args.producer_iteration,
+                                 diagnostic=args.diagnostic)
         print(json.dumps({key: str(item) if isinstance(item, Path) else item
                           for key, item in value.items() if key != "config"},
                          ensure_ascii=False, indent=2))
