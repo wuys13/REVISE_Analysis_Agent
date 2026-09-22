@@ -58,7 +58,7 @@ def reading_summary(result_dir: Path, result: dict | None = None) -> list[dict]:
             if _finite(row.n_units) and _finite(row.n_genes):
                 parts.append(f"{str(row.side).upper()} {int(row.n_units)} 个单位、{int(row.n_genes)} 个原生基因")
         if parts:
-            _append(facts, "；".join(parts) + "。对象范围独立，总数差不表示单位丢失。", "tables/input_overview.csv")
+            _append(facts, "；".join(parts) + "。对象范围独立，总数差须结合输入筛选与交付覆盖解释，不能单独归因为重建变化。", "tables/input_overview.csv")
 
     labels = _read_csv(result_dir, declared, "tables/reconstruction_label_summary.csv")
     if labels is not None and not labels.empty and "n_units" in labels:

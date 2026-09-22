@@ -242,7 +242,7 @@ _IMPACT_QUESTIONS = (
 
 _TOPIC_CONTEXT = {
     "population": "Raw 与 SVC 的对象范围可不同；这里描述各自表示，不把单位数或标签数的差异解释为改善。重建标签尚不等于生物学亚型。",
-    "rawbaseline": "Raw Leiden、已有 Raw Level2 和可选 SVC Leiden 分别保留来源；它们不覆盖输入的重建主标签。",
+    "rawbaseline": "Raw Leiden、已有 Raw Level2 和可选 SVC Leiden 分别保留来源；它们不覆盖输入的重建主标签。已提供的 Raw Level2 可能来自同一重建流程，须核对来源，不能自动作为独立验证；parent 标签的来源也限制比较的独立性。",
     "membership": "仅比较明确共同 ID cohort 的分区对应差异，不表示生物学身份转变，也不是其他分析的前置条件。",
     "genes": "Moran 是每侧原生空间图上的并行证据，不依赖 State 区域。完整基因与共享基因结果分别阅读，差值不是配对重建误差。",
     "program-overall": "每侧在固定 cohort 与基因轴上评分一次。查看覆盖率和实际 rank cutoff 后再判断比较条件；两侧分数不自动作差。",
@@ -555,7 +555,7 @@ def _scope_fact(topic: str, scope: str | None, scope_label: str, artifacts: list
             total = _complete_sum(labels, "n_units")
             parts.append(f"SVC 标签{f'覆盖 {int(total)} 单位' if total is not None else '单位总数未知'}/{len(labels)} 类")
         if parts:
-            return "；".join(parts) + "。两侧对象范围独立，数量差不表示单位丢失。"
+            return "；".join(parts) + "。两侧对象分别统计，数量差须结合输入筛选与交付覆盖解释，不能单独归因为重建变化。"
     if topic == "rawbaseline":
         coverage = available.get("tables/raw_level2_baseline_coverage.csv")
         coverage_text = None
