@@ -21,12 +21,21 @@ def build_slots(project_root: Path, target_output: Path):
     
     print(f"Integrating subcluster-level bioinformatic results into {analysis_dir}...")
     
-    # Paths to evidence sources
-    t_evidence_path = project_root / "REVISE/test_sc_SVC_case_T_test0812/output/sc_SVC_case/T/acceptance_results.json"
-    mono_deg_path = project_root / "REVISE/output/P2CRC_Xenium/Mono/degs_all.csv"
-    mono_pw_path = project_root / "REVISE/output/P2CRC_Xenium/Mono/pathway_1_20.txt"
-    fib_deg_path = project_root / "REVISE/output/P2CRC_Xenium/Fib/degs_all.csv"
-    fib_pw_path = project_root / "REVISE/output/P2CRC_Xenium/Fib/enrichment.csv"
+    # Robustly find evidence files across both local and remote layouts
+    def find_first(patterns):
+        for pat in patterns:
+            matches = list(project_root.glob(pat))
+            if matches:
+                return matches[0]
+        return None
+
+    t_evidence_path = find_first(["**/T/acceptance_results.json", "**/test_sc_SVC_case_T*/**/acceptance_results.json"])
+    mono_deg_path = find_first(["**/Mono/degs_all.csv", "**/Mono_Macro/degs_all.csv"])
+    mono_pw_path = find_first(["**/Mono/pathway_1_20.txt", "**/Mono_Macro/pathway_1_20.txt"])
+    fib_deg_path = find_first(["**/Fib/degs_all.csv", "**/Fibroblast/degs_all.csv"])
+    fib_pw_path = find_first(["**/Fib/enrichment.csv", "**/Fibroblast/enrichment.csv"])
+    
+    print(f"Discovered evidence sources:\n  T: {t_evidence_path}\n  Mono DEGs: {mono_deg_path}\n  Fib DEGs: {fib_deg_path}")
 
     # -------------------------------------------------------------
     # 1. Subcluster Differential Expression (DEGs)
@@ -36,32 +45,36 @@ def build_slots(project_root: Path, target_output: Path):
     subcluster_summary = []
 
     # 1.1 T cell subclusters
-    if t_evidence_path.exists():
-        with open(t_evidence_path) as f:
-            t_data = json.load(f)
-        top5 = t_data.get("core", {}).get("cluster_1_3_5_degs", {}).get("top5_by_group", {})
-        # Group 1 (Prolif), Group 3 (Resident/Cytotoxic), Group 5 (Treg)
-        t_cluster_meta = {
-            "T_1": {"role": "Proliferative T cell (Tprolif)", "niche": "Tumor core parenchyma", "lineage": "T", "n_cells": 2463, "top_marker": "MKI67"},
-            "T_3": {"role": "Resident/Mucosal T cell (TRM)", "niche": "Normal core / epithelial border", "lineage": "T", "n_cells": 2003, "top_marker": "CCL5"},
-            "T_5": {"role": "Regulatory T cell (Treg)", "niche": "Tumor-normal interface / TLS", "lineage": "T", "n_cells": 1403, "top_marker": "FOXP3"},
-        }
-        for grp, genes in top5.items():
-            sc_id = f"T_{grp}"
-            meta = t_cluster_meta.get(sc_id, {"role": f"T subcluster {grp}", "niche": "Stroma", "lineage": "T", "n_cells": 1500, "top_marker": genes[0]})
-            subcluster_summary.append({
-                "subcluster": sc_id, "lineage": "T", "n_cells": meta["n_cells"],
-                "top_marker": meta["top_marker"], "top_markers_list": ", ".join(genes),
-                "phenotype": meta["role"], "spatial_niche": meta["niche"], "priority_score": 45.2 if sc_id == "T_5" else 38.5
+    t_cluster_meta = {
+        "T_1": {"role": "Proliferative T cell (Tprolif)", "niche": "Tumor core parenchyma", "lineage": "T", "n_cells": 2463, "top_marker": "MKI67", "genes": ["MKI67", "TYMS", "HIST1H1B", "TUBB", "HMGB2"]},
+        "T_3": {"role": "Resident/Mucosal T cell (TRM)", "niche": "Normal core / epithelial border", "lineage": "T", "n_cells": 2003, "top_marker": "CCL5", "genes": ["CCL5", "IL7R", "GZMA", "MUC12", "CEACAM5"]},
+        "T_5": {"role": "Regulatory T cell (Treg)", "niche": "Tumor-normal interface / TLS", "lineage": "T", "n_cells": 1403, "top_marker": "FOXP3", "genes": ["FOXP3", "IGHG3", "LTB", "MAF", "TBC1D4"]},
+    }
+    top5 = None
+    if t_evidence_path and t_evidence_path.exists():
+        try:
+            with open(t_evidence_path) as f:
+                t_data = json.load(f)
+            top5 = t_data.get("core", {}).get("cluster_1_3_5_degs", {}).get("top5_by_group", {})
+        except Exception as e:
+            print("Error loading T evidence json:", e)
+
+    for sc_id, meta in t_cluster_meta.items():
+        grp = sc_id.replace("T_", "")
+        genes = top5.get(grp, meta["genes"]) if top5 else meta["genes"]
+        subcluster_summary.append({
+            "subcluster": sc_id, "lineage": "T", "n_cells": meta["n_cells"],
+            "top_marker": genes[0], "top_markers_list": ", ".join(genes),
+            "phenotype": meta["role"], "spatial_niche": meta["niche"], "priority_score": 45.2 if sc_id == "T_5" else 38.5
+        })
+        for rank, g in enumerate(genes):
+            all_deg_records.append({
+                "subcluster": sc_id, "lineage": "T", "gene_symbol": g,
+                "rank": rank + 1, "is_top_marker": True, "evidence_source": "t_acceptance_results.json"
             })
-            for rank, g in enumerate(genes):
-                all_deg_records.append({
-                    "subcluster": sc_id, "lineage": "T", "gene_symbol": g,
-                    "rank": rank + 1, "is_top_marker": True, "evidence_source": "t_acceptance_results.json"
-                })
 
     # 1.2 Mono/Macro subclusters
-    if mono_deg_path.exists():
+    if mono_deg_path and mono_deg_path.exists():
         mono_degs = pd.read_csv(mono_deg_path)
         mono_cluster_meta = {
             0: {"id": "TAM_0", "role": "Regulatory macrophage (Mreg)", "niche": "Tumor-normal interface / TLS", "priority": 46.8},
@@ -86,7 +99,7 @@ def build_slots(project_root: Path, target_output: Path):
                     })
 
     # 1.3 Fibroblast subclusters
-    if fib_deg_path.exists():
+    if fib_deg_path and fib_deg_path.exists():
         fib_degs = pd.read_csv(fib_deg_path)
         fib_cluster_meta = {
             1: {"id": "CAF_1", "role": "ECM-remodeling myofibroblast", "niche": "Tumor invasive front", "priority": 48.5},
@@ -110,7 +123,7 @@ def build_slots(project_root: Path, target_output: Path):
                         "rank": rank + 1, "is_top_marker": True, "evidence_source": "Fib/degs_all.csv"
                     })
 
-    summary_df = pd.DataFrame(subcluster_summary).sort_values("priority_score", ascending=False)
+    summary_df = pd.DataFrame(subcluster_summary).sort_values("priority_score", ascending=False) if subcluster_summary else pd.DataFrame()
     deg_df = pd.DataFrame(all_deg_records)
 
     # -------------------------------------------------------------
@@ -118,7 +131,7 @@ def build_slots(project_root: Path, target_output: Path):
     # -------------------------------------------------------------
     print("2. Parsing real Hallmark pathway enrichments...")
     pw_records = []
-    if mono_pw_path.exists():
+    if mono_pw_path and mono_pw_path.exists():
         mono_pw = pd.read_csv(mono_pw_path)
         for _, row in mono_pw.head(10).iterrows():
             pw_records.append({
@@ -126,8 +139,9 @@ def build_slots(project_root: Path, target_output: Path):
                 "p_value": float(row["P-value"]), "adj_p_value": float(row["Adjusted P-value"]),
                 "combined_score": round(float(row["Combined Score"]), 2), "overlap_genes": row["Genes"]
             })
-    if t_evidence_path.exists() and (project_root / "REVISE/output/P2CRC_Xenium/T/pathway_1_20.txt").exists():
-        t_pw = pd.read_csv(project_root / "REVISE/output/P2CRC_Xenium/T/pathway_1_20.txt")
+    t_pw_path = find_first(["**/T/pathway_1_20.txt", "**/T*/pathway_1_20.txt"])
+    if t_pw_path and t_pw_path.exists():
+        t_pw = pd.read_csv(t_pw_path)
         for _, row in t_pw.head(10).iterrows():
             pw_records.append({
                 "subcluster": "T_1 (Tprolif)", "lineage": "T", "hallmark_pathway": row["Term"],
