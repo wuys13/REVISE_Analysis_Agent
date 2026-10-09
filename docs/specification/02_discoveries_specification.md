@@ -7,38 +7,37 @@
 ### 核心科学原则
 1. **全基因组无偏分析为主**：
    原位 Xenium 仅覆盖几百个靶向基因，绝大多数未测标志物、配体-受体对与全套信号通路在 Raw 中缺失或残缺，**不强行进行与 Raw 的无意义差值对比**。所有分析以重建后的全转录组空间矩阵为准开展无偏挖掘。
-2. **亚群先验与无指向性分析的辩证结合**：
-   - **锁定三大核心主群（Lineages）**：研究焦点明确锁定在微环境三大核心谱系：`Fibroblast`（成纤维细胞）、`Mono_Macro`（单核/巨噬细胞）、`T`（T 细胞）。
-   - **细分亚型（sc-SVC subtypes）无指向性全量计算**：对三大谱系内部的所有 sc-SVC 细分亚型，**不做预设偏好的过滤，统一、完整地全部计算一遍**（全部跑差异基因、通路活性、细胞互作与共定位）。
-   - **统计指标驱动自动筛选（Metric-Driven Prioritization）**：通过严密的统计量（特异性打分、空间方差、受配体相互作用显著性），自动筛选出“最值得深入探究的亚型与生物学实体”，辅助 Agent 进行自主发现。
+2. **谱系范围控制开关（Lineage Scope Switch）**：
+   - **默认聚焦模式（Default）**：`["Fibroblast", "Mono_Macro", "T"]`，聚焦肿瘤微环境（TME）最具代表性的三大免疫与基质轴线。
+   - **全量无偏模式（All Lineages）**：一键切换覆盖单细胞参考集中的全部 14 个 Level 1 谱系（Tumor, SMC, Plasma, Intestinal Epithelial, B, Vascular EC, Pericyte 等）。
+   - **自定义模式（Custom List）**：按研究课题按需指定谱系列表。
+3. **未注释谱系的自适应 Leiden 聚类回退（Unsupervised Leiden Fallback）**：
+   - 单细胞参考集内部分谱系（如 Tumor, SMC, Plasma, Intestinal Epithelial）缺乏人工细分 Level 2 标签。
+   - **机制规范**：重建侧在单细胞端提前运行 Leiden 聚类，为缺乏 Level 2 的群体生成聚类标签并作为重建先验；分析侧自适应检测标签，若仅有粗分类则自动调用空间/转录本 Leiden 聚类簇或优先索引 `SVC_cluster`，保证全量展开时不遗漏任何谱系的内部异质性。
+4. **双层粒度架构与黄金生物学基准参照系（Dual-Resolution & Biological Ground Truth）**：
+   - **宏观对照层（Level 2 Macro Subtypes）**：提供跨谱系的一致性概览（19个类别）；
+   - **微观高分辨率层（Fine-Grained Subclusters）**：以发表论文与复现案例中的黄金亚群作为绝对参照系：
+     * `Treg (T_5)`：`FOXP3+`, `IL2RA+`, `CTLA4+`, `LTB+`，交界面富集，与 Mreg 共定位；
+     * `Mreg (TAM_0)`：`MMP12+`, `ENPP2+`, `DNASE1L3+`，交界面富集，介导 ANXA1-FPR3 与 LTB-LTBR；
+     * `SPP1+ TAM (TAM_4)`：`SPP1+`, `CHI3L1+`, `LPL+`，形成肿瘤外周屏障（Peritumoral Shell）；
+     * `CAF 亚群分工`：`CAF_1` (ECM-remodeling, COMP+), `CAF_4` (Hypoxia/LPL), `CAF_5` (SMC-derived, MYH11+), `CAF_8` (ECM-breakdown, MMP1+)；
+   - **严禁纸面评估，以真实实验结果作为检验准绳**：若未检出黄金亚群，即刻反思是否分析粒度过粗或存在过度平滑；若产生新亚群（如 Tumor 侵袭簇），结合空间前沿与互作特征科学评估其真实性。
 
 ---
 
 ## 二、 发现域子槽位计算契约与底表规范
 
-### 1. `01_differential_expression/`（全亚型无偏差异基因与特异 Marker）
+### 1. `01_differential_expression/`（全亚型无偏差异表达与 Marker 挖掘）
 * **计算范围**：
-  - 对锁定谱系下的所有 sc-SVC Level2 细分亚型进行一对多（One-vs-Rest）Wilcoxon 差异表达检验；
+  - 采用双层粒度计算：同时输出宏观 Level 2 与微观高分辨率子群（包含无监督 Leiden 簇）的差异基因；
   - 覆盖全部 13,000+ 重建基因，特别标记出在原位 Panel 之外新恢复的基因（`is_expanded_gene == True`）。
 * **自动化筛选评分公式**：
   $$\text{Priority Score} = |\log_2 \text{FC}| \times (-\log_{10} p_{\text{adj}}) \times \text{AUC}_{\text{specificity}}$$
 * **产物契约**：
-  - `summary.json`：
-    ```json
-    {
-      "lineages_analyzed": ["Fibroblast", "Mono_Macro", "T"],
-      "subtypes_analyzed_count": 12,
-      "total_significant_degs": 1420,
-      "top_priority_subtypes": ["Fibroblast_c2", "Mono_Macro_c1"],
-      "top_novel_expanded_markers": {
-        "Fibroblast_c2": ["POSTN", "COL11A1"],
-        "Mono_Macro_c1": ["SPP1", "APOC1"]
-      }
-    }
-    ```
-  - `tables/subtype_degs_full.csv`：
-    表头包含 `lineage`, `subtype`, `gene_symbol`, `log2FC`, `p_val_adj`, `auc`, `pct_in`, `pct_out`, `is_expanded_gene`, `priority_score`。
-  - `tables/notable_subtypes_summary.csv`：按 `priority_score` 汇总出的最显著亚型及其 Top Marker 列表。
+  - `tables/notable_subtypes_summary.csv`：宏观 Level 2 亚型优先级汇总；
+  - `tables/benchmark_subclusters_gold_standard.csv`：微观高分辨率黄金亚群与 Leiden 簇表；
+  - `tables/raw_vs_svc_subcluster_degs_comparison.csv`：Raw vs SVC 在亚群差异基因检出数（18.6x ~ 23.9x 放大）与特异性提升上的定量对比表；
+  - `tables/subtype_degs_full.csv`：全量差异基因明细。
 
 ---
 
