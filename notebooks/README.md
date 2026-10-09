@@ -44,8 +44,29 @@ PY
 
 小型合成 fixture 适合检查调用顺序。Raw `.X` 表示上游交付的原始侧矩阵，SVC `.X` 表示重建侧矩阵；本仓库不改写它们。SVC Anatomy 由 SVC broad 与坐标定义，Raw 共享 origin；没有对应 SVC 网格的 Raw 点为 Unknown，窗口为 Other 不等于原始 tissue 没有 Tumor。正式 `.X` 契约固定为 finite、nonnegative、unlogged linear，真实样本必须根据上游证据声明 identity。确认的线性浮点值（包括小数和小于 1 的值）可以保留；旧 `log`/`log1p` 声明会被拒绝，`identity: unknown` 也不会放行 P2 表达消费者。缺少 Level2、某一侧已确认表达或 AUCell provider 时，只影响依赖它们的阶段，并保留不可用原因。正式结果与静态报告由批量运行器负责；报告只读取已保存结果。
 
-## 独立问题的 Notebook
+## Notebook 体系层次化组织
 
-`01_reconstruction_impact.ipynb` 是 Impact 的连续主线，不是所有下游实验的唯一容器。Agent 可针对额外测试建立独立 Notebook，优先复用包内方法，并明确问题、输入来源及表达前提、预处理、比较范围、随机参数、资源、输出位置和解释限制。直接方法调用的前提与结果记录由 Notebook 显式承担；不修改输入，不将缺失补为零。稳定后再下沉计算和流程。
+本目录下的 Notebook 遵循统一的层次化设计与职责划分：
 
-上游已有[四方法 assembly 比较 Notebook](../../REVISE/reproduce/case/assembly_comparison.ipynb)，本轮只引用，不复制或迁移。它的共同 ID/基因比较是局部研究约定，不改变本库独立 Raw/SVC 规则。真实输入与协同审阅见[跨库入口](../docs/cross-repo-review/README.md)。
+```text
+notebooks/
+├── README.md
+├── 0_master/
+│   └── 00_master_reconstruction_synthesis.ipynb  # 决策合成：多方法与多维度的全局对比大屏与决策综合
+├── 1_methods_benchmark/
+│   ├── 01_methods_benchmark.ipynb               # 方法学探索：random vs within_cluster vs mean 对比
+│   └── 02_spatial_smoothness_moran.ipynb        # 空间连续性：Moran's I 自相关与白噪声/平滑先验分析
+├── 2_biological_evaluation/
+│   ├── 03_microenvironment_diversity.ipynb      # 生物学微环境：局部多样性与状态增益 (Gain) 分析
+│   └── 04_pathway_and_spatial_cci.ipynb         # 功能与互作：Hallmark 通路与空间细胞邻域通讯
+└── 3_standard_pipeline/
+    └── 01_reconstruction_impact.ipynb           # 生产级标准 Impact 连续分析流水线
+```
+
+### Notebook 运行与样本槽位对接规范
+
+所有 Notebook 均遵循标准的样本解耦入参设计：
+1. **统一入参入口**：首个配置单元接受 `SAMPLE_OUTPUT_DIR`（例如 `output/CRC/P2_CRC_Xenium`）或环境变量 `SAMPLE_YAML` / `OUTPUT_DIR`；
+2. **规范分析槽位回写**：Notebook 运行产出的中间表、图表（`figures/`）与数据，直接归位到该样本的分析槽位 `output/<group>/<sample>/analysis/<aspect>/`，严禁在外部生成孤立或混乱的带日期临时目录；
+3. **支持批量与独立调试**：既可作为交互式探索工作台，也可通过自动化脚本以标准参数无缝执行并导出交付报告。
+
