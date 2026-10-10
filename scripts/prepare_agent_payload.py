@@ -4,6 +4,7 @@
 Specification: docs/AGENT_GENERATION_SPEC.md
 Extracts key quantitative metrics from tables/ and detailed_data/ to supply
 the synthesis Agent with a clean, bounded factual payload for generating narrative texts.
+Strictly avoids synthetic formulas, mock statistics, or hardcoded fake metrics.
 """
 
 import argparse
@@ -30,32 +31,40 @@ def prepare_agent_payload(sample_dir: Path, output_file: Path | None = None) -> 
             "modality": "Xenium In Situ Spatial Transcriptomics",
             "total_cells": 50626,
             "lineages_covered": ["Fibroblast", "Mono_Macro", "T"],
-            "subclusters_count": 24
+            "subclusters_count": 25,
+            "paper_reference": "Cell Fig 6 (T/TAM) & Fig 7 (CAF)"
         },
         "quantitative_evidence": {}
     }
 
-    # 2. Extract Tier 2 Unmasking evidence
+    # 2. Extract Tier 2 Unmasking evidence & 5-layer systemic impact
+    payload["quantitative_evidence"]["unmasking_impact"] = {}
     if (t2_tables / "raw_vs_svc_unmasking_evidence.csv").exists():
         unmask_df = pd.read_csv(t2_tables / "raw_vs_svc_unmasking_evidence.csv")
-        payload["quantitative_evidence"]["unmasking_impact"] = {
-            "mean_moran_gain": 0.234,
-            "average_deg_sensitivity_increase": "20.7x",
-            "noise_reduction_ratio": "62.1%",
-            "key_comparisons": unmask_df.to_dict(orient="records")
-        }
+        payload["quantitative_evidence"]["unmasking_impact"]["key_comparisons"] = unmask_df.to_dict(orient="records")
+    if (t2_tables / "systemic_impact_5layers.csv").exists():
+        layers_df = pd.read_csv(t2_tables / "systemic_impact_5layers.csv")
+        payload["quantitative_evidence"]["unmasking_impact"]["systemic_impact_5layers"] = layers_df.to_dict(orient="records")
 
-    # 3. Extract Tier 3 Notable subclusters
+    # 3. Extract Tier 3 Notable subclusters (8 focal subclusters)
     if (t3_tables / "notable_subtypes_summary.csv").exists():
         notable_df = pd.read_csv(t3_tables / "notable_subtypes_summary.csv")
-        payload["quantitative_evidence"]["top_subtypes_multimetric"] = notable_df.head(8).to_dict(orient="records")
+        payload["quantitative_evidence"]["top_subtypes_multimetric"] = notable_df.to_dict(orient="records")
 
-    # 4. Extract Tier 1 Spatial colocalization & CCI
+    # 4. Extract Tier 1 Pathways (ORA Hallmark)
+    if (t1_tables / "pathway_scores_by_subtype.csv").exists():
+        pathway_df = pd.read_csv(t1_tables / "pathway_scores_by_subtype.csv")
+        payload["quantitative_evidence"]["pathways_ora_hallmark"] = pathway_df.to_dict(orient="records")
+
+    # 5. Extract Tier 1 Spatial colocalization & CCI
     if (t1_tables / "significant_lr_pairs.csv").exists():
         cci_df = pd.read_csv(t1_tables / "significant_lr_pairs.csv")
-        payload["quantitative_evidence"]["cell_cell_interactions"] = cci_df.head(6).to_dict(orient="records")
+        payload["quantitative_evidence"]["cell_cell_interactions"] = cci_df.to_dict(orient="records")
+    if (t1_tables / "colocalization_zscores.csv").exists():
+        coloc_df = pd.read_csv(t1_tables / "colocalization_zscores.csv")
+        payload["quantitative_evidence"]["spatial_colocalizations"] = coloc_df.to_dict(orient="records")
 
-    # 5. Extract Tier 3 Hypotheses Evidence Matrix
+    # 6. Extract Tier 3 Hypotheses Evidence Matrix
     if (t3_tables / "hypotheses_evidence_matrix.csv").exists():
         hyp_df = pd.read_csv(t3_tables / "hypotheses_evidence_matrix.csv")
         payload["quantitative_evidence"]["hypotheses_evidence"] = hyp_df.to_dict(orient="records")
