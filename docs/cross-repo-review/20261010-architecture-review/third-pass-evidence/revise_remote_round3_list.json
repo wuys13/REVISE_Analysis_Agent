@@ -1,0 +1,37 @@
+[
+  {
+    "notebook_id": "5cd61cb5-b0ec-40a6-ab66-874b1b941573",
+    "name": "cpu-download",
+    "status": "RUNNING",
+    "gpu_count": 0,
+    "gpu_model": ""
+  },
+  {
+    "notebook_id": "d3727d5c-a447-4f0a-bceb-4fc1fd575f0a",
+    "name": "cpu-4",
+    "status": "RUNNING",
+    "gpu_count": 0,
+    "gpu_model": ""
+  },
+  {
+    "notebook_id": "4752ea79-91a4-444f-964e-d22c04d75844",
+    "name": "cpu-3",
+    "status": "RUNNING",
+    "gpu_count": 0,
+    "gpu_model": ""
+  },
+  {
+    "notebook_id": "58bfcc6c-e848-44a7-a227-2ee82d25da01",
+    "name": "cpu-2",
+    "status": "RUNNING",
+    "gpu_count": 0,
+    "gpu_model": ""
+  },
+  {
+    "notebook_id": "c96af178-b79c-4590-a78d-d6eb302758ae",
+    "name": "cpu",
+    "status": "RUNNING",
+    "gpu_count": 0,
+    "gpu_model": ""
+  }
+]

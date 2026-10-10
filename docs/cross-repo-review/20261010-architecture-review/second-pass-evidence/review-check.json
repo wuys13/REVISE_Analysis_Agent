@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-10-10T05:28:52.620800+00:00",
+  "task_id": "revise-architecture-second-pass-20261010",
+  "owner": "review lead",
+  "python_interpreter": "/opt/homebrew/opt/python@3.13/bin/python3.13",
+  "python_version": "3.13.7",
+  "status": "review_complete_with_limits",
+  "acceptance_level": "review findings and evidence verification; not biological acceptance",
+  "confirmed_scope": "parallel development; bioinformatics and biological hypotheses; clinical/IFA/lineage follow-up verification outside this system",
+  "business_mutations": false,
+  "review_documents": [
+    "SECOND_PASS_REVIEW.md",
+    "SECOND_PASS_EXECUTION_FEEDBACK.md",
+    "COLLABORATOR_BRIEF.md"
+  ],
+  "link_check_errors": [],
+  "evidence_note": "remote raw JSON preserved; hash comparison covers current curated files only; no full scientific rerun"
+}

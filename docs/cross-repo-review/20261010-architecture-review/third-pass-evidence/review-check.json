@@ -1,0 +1,63 @@
+{
+  "task_id": "TASK-20261010-P2-THIRD-PASS-READONLY-REVIEW",
+  "owner": "review lead and five independent subagents",
+  "upstream": [
+    "REVISE historical case outputs",
+    "executor current presentation snapshots"
+  ],
+  "downstream": [
+    "executor remediation",
+    "collaborator Agent development"
+  ],
+  "code_commit": "6b158ed67117a580a1818cab957480537baeaa25",
+  "branch": "sl",
+  "observed_at": "2026-10-10T06:00:59.569730+00:00",
+  "execution_location": [
+    "local",
+    "qz cpu-2"
+  ],
+  "review_interpreter": "/opt/homebrew/opt/python@3.13/bin/python3.13",
+  "review_python": "3.13.7 (main, Aug 14 2025, 11:12:11) [Clang 16.0.0 (clang-1600.0.26.6)]",
+  "payload_verification_interpreter": "/Users/stephen/miniconda3/bin/python 3.12.4",
+  "input_identity": "33 current curated sample files; hashes in local manifest; historical source tables matched by separate read-only audit",
+  "command_scope": [
+    "read-only git and live ls-remote",
+    "qz list/run read-only inventory",
+    "CSV/JSON source-row matching",
+    "size/SHA256 local and remote comparison",
+    "isolated payload regeneration and empty-analysis check",
+    "py_compile payload script"
+  ],
+  "business_code_or_result_mutations": false,
+  "scientific_recalculation": false,
+  "large_h5ad_rehash": false,
+  "checks": {
+    "local_dual_tree_matches": "33/33",
+    "local_remote_curated_matches": "33/33",
+    "deg_source_rows_match": "135/135, exported logFC three-decimal tolerance",
+    "ora_source_rows_match": "40/40",
+    "cci_source_rows_match": "14/14, pair/cell_pair/p/mean/score",
+    "payload_regeneration": "exit 0, byte identical SHA256 9ae24ae6324985161da8f943000af4a3176aa42ea6601c58c1c7976f1579be0f",
+    "empty_analysis_case": "exit 0 with no missing/status; fails evidence completeness expectation",
+    "compile": "passed",
+    "exact_payload_test_timestamp": "not separately recorded in tool results; performed this turn; do not infer from this receipt time",
+    "live_origin_sl": "6b158ed67117a580a1818cab957480537baeaa25",
+    "remote_code_checkout": "e33d12217ec1ebed55ee607ed365dae1535e883a; payload script absent"
+  },
+  "status": "partial",
+  "acceptance_level": "review_complete_with_limits",
+  "technical_verified_scope": "table extraction/regeneration and presentation asset synchronization only",
+  "scientific_acceptance": false,
+  "report": "../THIRD_PASS_REVIEW.md",
+  "document_checks": {
+    "changed_document_links": "passed",
+    "git_diff_check": "passed",
+    "business_sample_hashes_unchanged_during_review": true
+  },
+  "independent_document_review": {
+    "reviewer": "architecture subagent",
+    "result": "PASS with limits",
+    "scope": "alignment with observed extraction/status checks and agreed stage boundary; not scientific acceptance",
+    "wording_fix": "CPDB statistical entries described as expression-side communication candidates"
+  }
+}

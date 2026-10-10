@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""Run unbiased bioinformatic analysis across ALL subclusters without prior filtering.
-
-Principles (aligned with user guidelines):
-1. Evaluate ALL subclusters across all lineages (Fibroblast 0-9, Mono_Macro 0-7, T 0-5) on equal footing.
-2. Demonstrate that data-driven statistical ranking metrics (Priority Score = |log2FC| * log10(N+1) * (-log10(padj))^0.25)
-   naturally prioritize key tumor microenvironment players (Treg, Mreg, SPP1+ TAM, CAF_1/4/5/8, Tprolif) without human selection bias.
-3. Verify that biological findings (DEGs, MSigDB Hallmark pathways, spatial colocalization Z-scores, ligand-receptor pairs)
-   align with gold-standard published discoveries.
+"""[DEPRECATED / ARCHIVED DEMO]
+Historical script used for initial priority scoring simulation.
+DO NOT RUN to overwrite official deliverables.
+All grounded data generation is handled by verified acceptance sources and prepare_agent_payload.py.
 """
 
 from __future__ import annotations
+
+import sys
+
+if __name__ == "__main__":
+    print("[ERROR] run_unbiased_all_subcluster_analysis.py is archived and deprecated.", file=sys.stderr)
+    print("        It contains legacy synthetic ranking formulas and must not overwrite current deliverables.", file=sys.stderr)
+    print("        Official verified data is preserved in output/CRC/P2_CRC_Xenium/.", file=sys.stderr)
+    sys.exit(1)
 
 import json
 import math
