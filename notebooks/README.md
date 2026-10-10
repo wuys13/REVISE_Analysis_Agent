@@ -1,5 +1,10 @@
 # 连续重建影响 Notebook
 
+> [!IMPORTANT]
+> **Notebook 双层公约：以哪个为准？**
+> 1. **唯一源码真理 (Source of Truth)**：本目录（`notebooks/`）下的 `.ipynb` 为**唯一可编辑源码模板**（Outputs 均为空，受 Git 管理）。逻辑修改、调参、二次开发**永远只修改本目录下的源码**。
+> 2. **运行时只读证据 (Execution Artifacts)**：`output/**/01_reconstruction_impact.executed.ipynb` 仅为自动化批处理或验收时由 `nbclient` 生成的**带图运行凭证**（受 `.gitignore` 忽略），切勿直接作为源码编辑。
+
 本目录只保留当前正式分析的连续阅读入口。计算责任仍在
 `revise_analysis/analyses/`、`runner.py` 与 `batch.py`；Notebook 调用同一套参数解析、阶段状态和结果保存协议，方便检查科学主线、参数来源和中间结果。
 
