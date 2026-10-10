@@ -1,84 +1,65 @@
-# 05. 面向 Agent 消费的数据契约与载荷规范 (Agent Data Contract & Payload Specification)
+# 05. Agent 载荷与事实契约
 
-> **上级入口**：[返回交付框架总览 (README.md)](README.md)  
-> **关键关联**：[01. 交付架构与目录形态规范](01_architecture_and_directory_layout.md) ｜ [04. 生物学故事与文献对齐](04_biological_validation_and_stories.md)
+> [返回交付框架总览](README.md) ｜ [目录架构](01_architecture_and_directory_layout.md) ｜ [输入输出协议](../input-output.md)
 
----
+本页把确定性计算与 Agent 文字综合分开。代码读取实际结果并登记来源、范围和状态；Agent 可以据此组织 `FINDINGS.md`、故事或假说草稿，但不能补写缺失数字、改变分母或把候选机制改成已证实结论。
 
-## 1. 机器消费载荷的设计哲学 (Design Philosophy)
+## 1. 载荷的最小内容
 
-为赋能下游 AI Agent 进行自主科学发现，我们必须为大模型提供一个**既高度结构化、又具备严格事实边界（Factually Bounded）**的数据契约：
-
-1. **紧凑尺寸与 Token 预算控制**：
-   全量提取产物 [`agent_input_payload.json`](../../output/CRC/P2_CRC_Xenium/agent_input_payload.json) 大小约为 **43 KB**（约 9,000 Token）。这完美适配主流大模型的输入窗口，避免了由于输入几十万行原始矩阵导致的性能衰减与上下文截断。
-2. **纯粹确定性的事实边界 (Zero-hallucination Contract)**：
-   载荷中包含的所有基因名、差异倍数、富集得分、受配体对与空间区域，均由提取脚本从底层经过统计检验的 CSV 中无损抽取，杜绝大模型在下游推理时虚构数值。
-3. **元数据与溯源登记 (Provenance Registry)**：
-   载荷头部显式登记了数据来源路径、亚群宇宙总数、评估范围与管线状态，确保每一项结论均具备完整的计算可追溯性。
-
----
-
-## 2. Payload 核心 Schema 字典与数据模型
-
-标准化载荷 `agent_input_payload.json` 的顶层结构定义如下：
+载荷不是新的结果数据库，也没有固定大小或 token 目标。适合机器消费的载荷至少应能回答：样本和输入是谁、本次覆盖了什么、哪些证据可读、哪些缺失或不可用、每条事实回到哪里。
 
 ```json
 {
-  "sample_metadata": { ... },          // 样本身份、亚群宇宙与溯源登记
-  "quantitative_evidence": {           // 定量事实证据库
-    "unmasking_impact": { ... },        // 重构去掩盖对比与五层覆盖矩阵
-    "top_subtypes_multimetric": [ ... ],// 8 大焦点核心亚群多维特征
-    "pathways_ora_hallmark": [ ... ],   // 40 条 Hallmark ORA 真实富集结果
-    "cell_cell_interactions": [ ... ],  // 14 条 CellPhoneDB 显著受配体对
-    "spatial_colocalizations": [ ... ], // 空间共定位描述性记录
-    "hypotheses_evidence": [ ... ]      // 4 大科学假说的多维支撑矩阵
+  "sample_metadata": {
+    "sample_id": "<from registered sample>",
+    "source_status": "<observed status>",
+    "acceptance_level": "<technical or scientific level>",
+    "evaluation_scope": "<counts and ranges derived from current tables>",
+    "provenance_registry": "<optional source registry>",
+    "evidence_files": [
+      {"path": "<relative path>", "sha256": "<current hash>", "rows": "<current rows>"}
+    ],
+    "pipeline_status": "complete | partial",
+    "missing_inputs": []
   },
-  "generation_targets": [ ... ]        // 规范约定的下游产物目标清单
+  "quantitative_evidence": {
+    "<view or analysis>": "<records copied from current result tables>"
+  },
+  "generation_targets": ["<relative paths that a writer may update>"]
 }
 ```
 
-### 字段级数据契约对照表
+字段值必须来自当前样本和结果；示例中的占位符不构成任何样本事实。载荷可以引用五层阅读视图，但正式状态和输出身份仍以 `index.json`、`result.json` 和 manifest 为准。
 
-| 顶级键 | 二级键 / 字段路径 | 数据类型 | 物理与统计含义 | 下游 Agent 使用范式 (Prompting Directive) |
-|---|---|:---:|---|---|
-| `sample_metadata` | `sample_id`, `cancer_type`, `modality` | string | 样本基础生物学与技术身份 | 设定分析报告的全局上下文与标题 |
-| `sample_metadata` | `subclusters_universe` | int (25) | 重构解耦出的全谱系亚群总规模 | 约束全量宇宙，防止声称仅有局部亚群存在 |
-| `sample_metadata` | `evaluation_scope` | dict | 包含的焦点亚群数 (8)、DEG行数 (135) 等 | 明确当前分析的有界范围，说明未覆盖全量的原因 |
-| `sample_metadata` | `pipeline_status` | string | 生成状态 (`complete` / `partial`) | 门禁检验：若为 `partial` 则提示缺口，不强行归纳 |
-| `quantitative_evidence` | `unmasking_impact.key_comparisons` | list[dict] | Tprolif (18.6x) 等关键表型的去掩盖证据 | 撰写“重构揭示了什么”章节，论证算法核心价值 |
-| `quantitative_evidence` | `unmasking_impact.systemic_impact_5layers` | list[dict] | Unit/Gene/Path/CCI/Niche 五层系统覆盖大表 | 渲染系统化全景矩阵，展示微环境信息解脱 |
-| `quantitative_evidence` | `top_subtypes_multimetric` | list[dict] | 8 大焦点亚群标记物、生态位与预后角色 | 生成亚群核心特征卡片，驱动靶标分子识别 |
-| `quantitative_evidence` | `pathways_ora_hallmark` | list[dict] | ORA 富集通路名、Combined Score 与 padj | 绘制功能通路气泡图，推演亚群生物学状态 |
-| `quantitative_evidence` | `cell_cell_interactions` | list[dict] | CellPhoneDB 置换检验显著受配体对 | 构建微环境分子通讯流与受配体互作网络 |
-| `quantitative_evidence` | `hypotheses_evidence` | list[dict] | H1–H4 假说结构化对应关系与文献锚点 | 核心科学假说推演、撰写假说报告与设计实验 |
+## 2. 生成与消费边界
 
----
+[`scripts/prepare_agent_payload.py`](../../scripts/prepare_agent_payload.py) 负责从已经准备的分析材料读取 metadata、表格和可选 source registry，并登记当前行数、路径和 hash。它不是科学分析 runner，也不触发 Agent 写作；脚本退出成功只表示载荷生成过程完成，不能证明表格内容正确或科学结论已接受。
 
-## 3. 标准载荷生成器与健壮性保障 (Generator Script)
+生成前应检查：
 
-载荷由专用无偏提取脚本 [`scripts/prepare_agent_payload.py`](../../scripts/prepare_agent_payload.py) 生成，内置以下安全机制：
+1. 样本身份来自登记的 `summary.json` 或等价事实来源，而不是脚本常数。
+2. 缺少必需材料时状态为 `partial` 并列出 `missing_inputs`；缺失项不能静默变成空数组或零。
+3. 表格中的缺失值保持 JSON `null`，不要改变缺失和零的含义。
+4. evidence file 的相对路径、当前 hash 和行数与本次读取对象一致；历史路径只作为历史来源标识。
+5. `generation_targets` 只列实际存在且允许被写入的阅读材料，不能暗示已经自动生成。
 
-1. **依赖底表完整性校验**：
-   自动检测必需的 7 张核心底表；若任意底表缺失，自动标记 `pipeline_status: partial` 并列出 `missing_inputs`，拒绝生成伪装成功的载荷。
-2. **跨平台确定性输出**：
-   统一浮点数解析与 JSON 序列化编码（`ensure_ascii=False`, `indent=2`），保证在 macOS（arm64）与 Linux（x86_64）环境下生成的 SHA-256 绝对一致。
+## 3. Agent 写作纪律
 
-### 命令行调用方式
+- 每条数字、排名、分母、程序或通讯候选都能回到载荷记录和底表；需要更多细节时下钻到 `result.json` 和原表。
+- 明确区分观察、派生量、候选解释、历史 case 和外部证据。
+- 报告 `partial`、`unavailable`、`failed`、`pending` 与 `scientific_review_pending`，不把它们压成“无差异”或“已完成”。
+- 空间邻近、群级表达、类别 posterior 或未校准分数不能直接称为物理接触、功能因果或正确概率。
+- 目标文档应保留证据入口、支持范围、替代解释、限制和下一步检查；文字总结不能成为第二份事实数据库。
 
-```bash
-# 从指定样本目录生成标准化 Agent 载荷
-python3 REVISE_Analysis_Agent/scripts/prepare_agent_payload.py --sample-dir output/CRC/P2_CRC_Xenium
+## 4. 推荐工作顺序
+
+```text
+确定性分析/结果发布
+  -> index.json / result.json / output manifest
+  -> prepare_agent_payload.py（可选摘要）
+  -> Agent 读取载荷并按需下钻底表
+  -> 生成阅读视图或假说草稿
+  -> 人类科学审阅与单独验收
 ```
 
----
-
-## 4. 下游 Agent 提示词调用范式 (Downstream Prompting Guide)
-
-当下游 Agent 消费本载荷以生成科学假说或实验设计备忘录时，建议使用以下系统约束提示词：
-
-> **下游 Agent 系统提示词模板 (System Prompt Snippet)**：  
-> “你是一个肿瘤空间转录组与微环境科学发现专家 Agent。你将接收一个经过严格统计检验的结构化载荷 `agent_input_payload.json`。  
-> 你的推理必须严格遵守以下事实纪律：  
-> 1. **严禁捏造未经载荷声明的数值**：报告中引用的每一个差异倍数、通路富集分、受配体互作分必须直接取自载荷中的字段；  
-> 2. **尊重证据层级**：明确区分体系内生信计算证据（如 LTB-LTBR 互作分 100.0）与外部文献佐证（如 Cell 论文 16 队列 DFS 预后）；  
-> 3. **空间情境锚定**：所有提出的生物学机制必须结合载荷中的 `spatial_niche` 进行解释，说明其发生在哪一个微环境解剖区域。”
+三槽位是阅读组织，不是 Agent 自动编排协议。外部临床、IFA、谱系追踪和湿实验材料可以作为关联证据登记，但不自动成为当前载荷或生信运行的隐式前提。

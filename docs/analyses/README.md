@@ -1,7 +1,7 @@
 # 按科学问题找到能力
 
 > [!TIP]
-> 关于面向 AI Agent 自主科学发现的完整**双域架构（`00_benchmarks` vs `01_discoveries`）**与**4 级渐进式披露契约**，请参阅：[生信分析槽位体系与科学发现规范](../specification/README.md)。
+> 阅读层次、交付边界和 Agent 载荷见[交付框架](../delivery_framework/README.md)。三类阅读槽位是对正式结果的组织视图；实际计算和结果身份仍由本页列出的 `analyses/`、`runner`、`batch`、`index.json` 与 `result.json` 负责。
 
 ## 正式分析入口
 

@@ -19,7 +19,7 @@
 | 理解仓库边界、核心设计 | [架构](docs/architecture.md) |
 | 准备输入或调用 API／批量命令 | [输入输出协议](docs/input-output.md) |
 | 找到某个科学问题对应的能力 | [分析能力索引](docs/analyses/README.md) |
-| 看连续分析逻辑、调整参数和图 | [Impact Notebook](notebooks/01_reconstruction_impact.ipynb) |
+| 看连续分析逻辑、调整参数和图 | [Impact Notebook](notebooks/3_standard_pipeline/01_reconstruction_impact.ipynb) |
 | 核对迁移来源、真实验收限制 | [迁移与验证](docs/migration.md) |
 
 ## 安装与快速运行

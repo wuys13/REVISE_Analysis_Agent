@@ -98,7 +98,8 @@ P2 Raw 来源 `REVISE/raw_data/Real_application/P2CRC_Xenium.h5ad`；临时 SVC 
 ```
 
 - 正式结果：`output/P2CRC_Xenium/reconstruction_impact/report.html`。
-- Notebook 源码：`notebooks/01_reconstruction_impact.ipynb`；默认使用同一 P2 样本参数。
+- 历史执行记录中的 Notebook 源码：`notebooks/01_reconstruction_impact.ipynb`；该路径保留为当时工作树的定位信息。
+- 当前 Notebook 源码：[`notebooks/3_standard_pipeline/01_reconstruction_impact.ipynb`](../notebooks/3_standard_pipeline/01_reconstruction_impact.ipynb)；默认使用同一 P2 样本参数。
 - 实际执行版：`output/notebook/P2CRC_Xenium/executed_revised.ipynb`。
 - 底表一致性与派生事实验收记录：`output/verification/p2_acceptance.json`。
 - 新合成示例：`data/example_reconstruction/`；旧 `data/example/` 及其 H5AD 保留，不覆盖。

@@ -1,58 +1,46 @@
-# 03. 重建五层系统解构矩阵规范 (Systemic 5-Layer Reconstruction Impact)
+# 03. 重建影响的五层阅读视图
 
-> **上级入口**：[返回交付框架总览 (README.md)](README.md)  
-> **关键关联**：[02. 客观统计基线与亚群排序](02_unbiased_statistical_ranking.md) ｜ [04. 生物学故事与文献对齐](04_biological_validation_and_stories.md)
+> [返回交付框架总览](README.md) ｜ [Impact 分析](../analyses/reconstruction-impact.md) ｜ [输入输出协议](../input-output.md)
 
----
+五层视图用于系统回答“重建改变了什么”，但不是五个自动成功的分析模块。每一层都必须从本次结果读取实际事实，或明确记录不可评估原因。
 
-## 1. 重构算法的核心使命：破除原位物理局限 (The Unmasking Mission)
+## 1. 五层问题与当前能力
 
-原始原位空间转录组（以 10x Xenium 为代表）具有极高的亚微米级光学分辨率，但受制于物理探针化学合成上限与光学衍射限制，存在两大本质瓶颈：
-1. **靶标基因空间受限与严重 Poisson Dropout**：通常仅有 300~500 个预设探针（本样本为 422 个），导致绝大多数关键转录因子（如 `FOXP3`、`CTLA4`、`MAF`）和细胞周期下游调控分子近乎零检出；
-2. **基质与上皮信号光学弥散**：组织致密区高丰度结构分子横向扩散，导致微弱免疫亚群被泛胶原或上皮角蛋白假性遮盖。
+| 层面 | 要回答的问题 | 当前可复用入口 | 当前边界 |
+| --- | --- | --- | --- |
+| **ST unit / 细胞亚型** | 单位语义、标签覆盖、组成和局部状态是否改变？ | `reconstruction_impact`、`methods.partition`、`methods.regions` | Raw/SVC 默认独立；成员变化只在明确共同 ID 时比较。unit uncertainty 仍需单独定义和校准 |
+| **Gene / 分子** | 哪些基因被观测、恢复、改变或具有特异性？ | `impact_molecular`、`spatial_autocorrelation`、`methods.differential_expression` | 表达 identity、共同基因轴、背景和检验条件必须明确；更多检出量不自动等于灵敏度提高 |
+| **Pathway / program** | 基因集覆盖、程序评分和空间分布怎样变化？ | `pathway_activity`、`impact_molecular`、`methods.programs` | provider、基因集和有效基因覆盖是前提；单侧分数与跨侧差值分开解释 |
+| **CCI / 通讯** | sender/receiver、ligand/receptor 及其空间支持到什么程度？ | `methods.cell_communication` 与已登记的 producer/case 结果 | wrapper 不是完整 spatial CCI workflow；表达候选、邻近支持和功能因果不可混写 |
+| **区域 / niche** | 变化位于哪些坐标、区域、边界或邻域？ | `methods.regions`、Anatomy/State/Gain 结果、空间图 | 区域来源和尺度需登记；坐标和共定位不单独证明 TLS 成熟度、力学、血流或因果机制 |
 
-**REVISE 超分辨率重建**的本质，是通过引入单细胞参考先验分布，将受限的原位单细胞测序映射恢复至全转录组单细胞真实状态。为了系统化评估这一跃迁，我们建立了**“五层系统化解构覆盖矩阵”**。
+## 2. 证据链
 
----
+建议按以下顺序阅读，而不是用一组正向 KPI 代替全层覆盖：
 
-## 2. 五层系统化覆盖矩阵 (The 5-Layer Coverage Matrix)
-
-矩阵将空间区域（Niche）作为贯穿始终的微环境物理坐标，自底向上全面刻画重构前后的状态跃迁：
-
-| 层面 (Layer) | 原始原位测量状态 (Raw Measurement) | REVISE 重构状态 (SVC Reconstruction) | 关键去掩盖机制与收益 (Key Biological Impact) | 对应空间微环境生态位 (Spatial Niche) | 事实底表支持 |
-|---|---|---|---|---|---|
-| **1. ST unit / 细胞亚型** | 粗粒度大类混合；弱表型亚群被高丰度细胞淹没 | 解耦出 T (7群)、TAM (8群)、CAF (10群) 共 25 个精细亚群 | 均质间质解耦出收缩型、代谢型、降解型 4 类成纤维细胞 | 全组织微环境覆盖 | [`subtype_degs_full.csv`](../../output/CRC/P2_CRC_Xenium/analysis/01_bioinformatic_analysis/detailed_data/subtype_degs_full.csv) |
-| **2. Gene / 分子特征** | 422 目标探针；弱表达转录因子受 Poisson Dropout 零值截断 | **扩增至 13,088 基因**；`FOXP3`/`CTLA4`/`MAF` 恢复特异表达 | 高变基因空间表达恢复；Tprolif 检出 DEG 实现 **18.6 倍增幅** | 交界区 (Treg) / 核心 (Tprolif) | [`raw_vs_svc_unmasking_evidence.csv`](../../output/CRC/P2_CRC_Xenium/analysis/02_reconstruction_impact/tables/raw_vs_svc_unmasking_evidence.csv) |
-| **3. Pathway / 功能程序** | 靶标探针过少，无法富集完整的 Hallmark 生物学程序 | 完整映射 Hallmark 癌症特征通路网络与功能活性 | E2F/G2M 增殖、IL2-STAT5 稳态调节及 EMT 基质重塑网络清晰涌现 | 核心 (增殖) vs 边界 (调节) vs 前沿 (基质) | [`pathway_scores_by_subtype.csv`](../../output/CRC/P2_CRC_Xenium/analysis/01_bioinformatic_analysis/tables/pathway_scores_by_subtype.csv) |
-| **4. CCI / 细胞通讯网络** | 缺失绝大部分受体与配体，无法推断分子接触通讯 | 基于 CellPhoneDB 置换检验捕获候选配受体通讯流 | 识别出 LTB-LTBR (100.0)、CXCL9/10-CXCR3 (100.0) 及 ANXA1 自分泌 | 交界区/TLS 维持轴 与 肿瘤实质招募轴 | [`significant_lr_pairs.csv`](../../output/CRC/P2_CRC_Xenium/analysis/01_bioinformatic_analysis/tables/significant_lr_pairs.csv) |
-| **5. 空间区域 / Niche** | 光学横向弥散模糊了亚群的物理空间分界 | 确立微米级精度的微环境空间共存与组织协同网络 | 确立交界区 TLS、外周环状纤维壳、实质浸润多尺度空间结构 | Interface / Desmoplastic rim / Tumor core | [`colocalization_zscores.csv`](../../output/CRC/P2_CRC_Xenium/analysis/01_bioinformatic_analysis/tables/colocalization_zscores.csv) |
-
-> 对应真实数据底表：[`tables/systemic_impact_5layers.csv`](../../output/CRC/P2_CRC_Xenium/analysis/02_reconstruction_impact/tables/systemic_impact_5layers.csv)
-
----
-
-## 3. 核心表型层面的去掩盖定量对比 (Phenotype-level Unmasking Facts)
-
-根据真实接受性笔记本（`Xenium_sc_SVC_T.ipynb`、`Xenium_sc_SVC_Monocyte.ipynb`、`Xenium_sc_SVC_Fibroblast.ipynb`）中的配对与表型计算，重构带来的关键生物学去掩盖事实如下：
-
-```
-[原始原位 Xenium (422 探针)]                [REVISE 超分辨率重建 (13,088 基因)]
-───────────────────────────────────         ────────────────────────────────────────
-• Tprolif vs TRM: 仅检出 123 个 DEG    ───>  • Tprolif vs TRM: 检出 2287 个 DEG (18.6x 提升)
-  (MKI67 下游周期分子严重截断)                    (恢复 TYMS, RRM2, TOP2A, NUSAP1 等完整网络)
-
-• Treg vs TRM: 仅检出 64 个 DEG        ───>  • Treg vs TRM: 检出 90 个 DEG (1.41x 提升)
-  (弱表达调控因子原位难以分离)                     (恢复 FOXP3, TIGIT, CTLA4, LTB 特异性)
-
-• 均质促癌间质 (单一纤维化大类)          ───>  • 解耦出 4 类功能正交成纤维细胞亚群:
-  (泛胶原探针无法区分精细亚态)                    - CAF_5: ACTA2/MYH11+ (平滑肌收缩)
-                                                  - CAF_4: LPL/MMP11+ (代谢耦合)
-                                                  - CAF_8: MMP1/MMP3+ (基质降解)
-                                                  - CAF_1: COMP/COL11A1+ (ECM 硬化)
+```text
+输入身份与单位语义
+  -> 标签/表达/坐标的可评估范围
+  -> 单层结果与分母
+  -> 跨层连接（基因 -> 程序 -> 通讯/邻域 -> 区域）
+  -> 支持、反证、替代解释与不可评估项
 ```
 
-### 证据溯源索引
+`State` 描述主 SVC 标签的局部多样性；`Gain` 是在共同有效窗口上定义的描述性差值；Moran 在两侧原生空间上独立计算；AUCell/program 先固定单位级评分再做空间聚合；membership 只比较明确的共同单位。它们是平行证据视图，不能单独证明整体生物学改善。
 
-* **T 淋巴细胞表型对比**：`REVISE/reproduce/case/Xenium_sc_SVC_T.ipynb` (Cell 28) 对应 Cell Fig 6D–G；
-* **单核巨噬表型解离**：`REVISE/reproduce/case/Xenium_sc_SVC_Monocyte.ipynb` (Cell 30) 对应 Cell Fig 6H–I；
-* **成纤维细胞异质性解构**：`REVISE/reproduce/case/Xenium_sc_SVC_Fibroblast.ipynb` 对应 Cell Fig 7A–G。
+## 3. ST unit 与 gene uncertainty
+
+用户已确认 unit 和 gene 两维 uncertainty 是后续目标。当前文档只规定消费边界，不把实验性稳定性分数改名为正式后验：
+
+- 先声明量针对测量、表达预测、类型映射还是位置；不同对象分别解释。
+- 全局 gene 或 unit 分数不足以说明某个局部 gene×unit 组合可靠；需要时保留条件查询能力。
+- 生物学异质性、低检测和技术/推断不确定性分开；不把真实罕见状态自动压成噪声。
+- Gene、Pathway、CCI 和区域解释都应传播适用的覆盖/可靠性信息，并保留校准和缺失原因。
+
+具体算法、单位、校准和保存形式尚未在本仓库形成正式 contract，不能由当前结果声称已完成。
+
+## 4. 故事与比较边界
+
+重建影响可以显示可观测特征、差异、空间位置和候选机制，但不能把“恢复的基因”“显著的程序”“共定位”直接改写成因果、生物学改善或外部实验已证实。论文 case、临床队列、IFA、谱系追踪和湿实验是外部或历史证据，需保持来源和支持范围，不能作为本次分析的隐式运行前提。
+
+任何层面缺少数据或方法时，结果应保留 `partial`、`unavailable`、`skipped` 或 `failed` 及原因。五层矩阵是导航和审阅工具，正式事实仍来自 `result.json` 及其 outputs。
