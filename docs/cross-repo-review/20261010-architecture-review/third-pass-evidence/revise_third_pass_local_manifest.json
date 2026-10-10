@@ -1,0 +1,221 @@
+{
+  "task_id": "TASK-20261010-P2-THIRD-PASS-READONLY-REVIEW",
+  "observed_at": "2026-10-10T05:51:20.396607+00:00",
+  "execution_location": "local",
+  "code_repositories": {
+    "REVISE": {
+      "head": "b4ea718bbc9c7171f654961c4d0fa51e2193d3da",
+      "branch": "revise-2.0",
+      "dirty": "?? scripts/migrate_remote_p2_assets.py"
+    },
+    "REVISE_Analysis_Agent": {
+      "head": "6b158ed67117a580a1818cab957480537baeaa25",
+      "branch": "sl",
+      "dirty": ""
+    }
+  },
+  "review_interpreter": "/opt/homebrew/opt/python@3.13/bin/python3.13",
+  "review_python": "3.13.7 (main, Aug 14 2025, 11:12:11) [Clang 16.0.0 (clang-1600.0.26.6)]",
+  "business_mutations": false,
+  "local_sample_files": [
+    {
+      "path": "README.md",
+      "size": 8072,
+      "sha256": "b95d45cc003de5457d28ac72beff9d61889962ecd715d182f3be57a059227e8f",
+      "second_tree_match": true
+    },
+    {
+      "path": "agent_input_payload.json",
+      "size": 43423,
+      "sha256": "9ae24ae6324985161da8f943000af4a3176aa42ea6601c58c1c7976f1579be0f",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/FINDINGS.md",
+      "size": 1488,
+      "sha256": "0037b1a44d6f6bd7f1e8715c581250f87d87a5e74dfc97db5692e3e99737cecf",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/README.md",
+      "size": 698,
+      "sha256": "82b97e0be91215ba3ca8b907755e897adce651a277f0c19c52a1c7aed51febbf",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/detailed_data/focal_subtypes_top_degs.csv",
+      "size": 21173,
+      "sha256": "680a7d00f53528254996ff6c468b72a8cfbb892660c60915fd8f8a357dba9933",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/detailed_data/subtype_degs_full.csv",
+      "size": 21173,
+      "sha256": "680a7d00f53528254996ff6c468b72a8cfbb892660c60915fd8f8a357dba9933",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/summary.json",
+      "size": 687,
+      "sha256": "dee925eb41ce615272c2c318a679d2cb26a0f86dda686c23ff1c698bd82d8691",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/tables/colocalization_zscores.csv",
+      "size": 1169,
+      "sha256": "92545947d1b59187baf9a507ed3267d73b90085981f6ea939606548dd04dd8bf",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/tables/pathway_scores_by_subtype.csv",
+      "size": 10586,
+      "sha256": "679775a0b9e3a57ff3056f8197860e85b068d4384d24da46c4e559b64576198a",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/tables/significant_lr_pairs.csv",
+      "size": 2566,
+      "sha256": "2e904338cdfdbfaf0c68338aa43d3668e39e71af601438c805f2753a42545213",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/FINDINGS.md",
+      "size": 1466,
+      "sha256": "88b5bdd067aad20e94e1a9f355c4e08727c0142bf1428da0603e3c8138a52625",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/README.md",
+      "size": 700,
+      "sha256": "f622d57820cc0890dc12ea2ae5d94e281fc3a2236cd8cfdd70ec10649cb892f6",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/detailed_data/contamination_clearance.csv",
+      "size": 389,
+      "sha256": "703b75453b95ea167522f39a4b6ede326a3b7d94fcb67d372cf6918038f7dc74",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/detailed_data/noise_reduction_diffusion.csv",
+      "size": 559,
+      "sha256": "3295c26d760bd5940073ce3ed930260a3f3456bbc4db5b90eb2e3bf27ab6eccc",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/summary.json",
+      "size": 594,
+      "sha256": "8290418112f8bfb7ca69f44c7deb6ec78ec0f67bce6d93e1315be862f5ba6832",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/diversity_entropy_delta.csv",
+      "size": 414,
+      "sha256": "bef324483a2c3ba352de2354f2462e8511d65f089eb83e0257f26865750a6319",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/moran_gain_by_lineage.csv",
+      "size": 198,
+      "sha256": "b7aa97d9186c5a26985776ff7f5d6970ba9b5c017f033aa8c5f1312d2d3325bd",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/raw_vs_svc_unmasking_evidence.csv",
+      "size": 1672,
+      "sha256": "7b2837e987041df4175ef55945ccb1e8e888f82945bd4b02e662293c212bdbd3",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/systemic_impact_5layers.csv",
+      "size": 1893,
+      "sha256": "b029fd024f9f7d8a3371c5935973e98db35208846cab2842d29026b37f365392",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/FINDINGS.md",
+      "size": 1285,
+      "sha256": "d8ee2c0b0f142705067cb5167e654a20b2f225b46a50a3891ce1309baa9a579a",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/README.md",
+      "size": 535,
+      "sha256": "c7d57cd1dc4f708f2a2b7dd0dc27a5e79e331c7d94a0b6da5ee45e2995264b50",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/detailed_data/target_lineage_programs.csv",
+      "size": 1106,
+      "sha256": "755b24b42e9c2e5ba819572fb31afcd849f8ce271acfa828d35aad641cd9769c",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_1_Treg_Mreg_TLS_Niche.md",
+      "size": 3758,
+      "sha256": "aa1824155dafe3927ead38045887e08f5efffd2638e381d98bbad057edf53213",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_2_SPP1_TAM_MyoCAF_Invasive_Shell.md",
+      "size": 810,
+      "sha256": "7b960bb99fb7c22186635a580fe6fd74a283f4a28468e346cf6688506cd3d342",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_3_Tprolif_Inflammatory_TAM_Core_Recruitment.md",
+      "size": 716,
+      "sha256": "5db33e7e906b9c1d99e8597116d105fad5dd4fce3faca201b807b0205ca77edd",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_4_Contractile_vs_Proteolytic_CAF_Heterogeneity.md",
+      "size": 3152,
+      "sha256": "d31bad245491753169c7398b5e3e0adba85bc75342c2e1a2d175654ed182b0c5",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/summary.json",
+      "size": 755,
+      "sha256": "b0feaf0ca2881f88bb165f60c70f59723b59ebf73d0028ed8df066a11a86cd72",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/tables/hypotheses_evidence_matrix.csv",
+      "size": 1916,
+      "sha256": "7604bd471d176f0028c0888626e317c363d7c610bb4b24f05c70dfadf9b76493",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/tables/notable_subtypes_summary.csv",
+      "size": 2676,
+      "sha256": "6c1545ab49c927a0e6380d1323b763a4c637f4ed8fbdad6f76259721935fce68",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/README.md",
+      "size": 1018,
+      "sha256": "4066ce49b61564cc50f0a9a4cb579a1d5a2d2f5e1d163292ce344ad46c935314",
+      "second_tree_match": true
+    },
+    {
+      "path": "analysis/analysis.json",
+      "size": 1280,
+      "sha256": "db776c3450298ccef43143b895d23c1acdbd59cc55ef8374bf22f6907ee65f3a",
+      "second_tree_match": true
+    },
+    {
+      "path": "report.html",
+      "size": 21494,
+      "sha256": "d4fca31d559bea0589b19bf80d5f1683a6448a3b0edc943a2c6f3ad113974876",
+      "second_tree_match": true
+    },
+    {
+      "path": "summary.json",
+      "size": 5408,
+      "sha256": "3ced78a58ad59da0576ed860f86faa4bee5a85e5726fe1845c197cd2c1d350c1",
+      "second_tree_match": true
+    }
+  ],
+  "comparison_scope": "small current sample presentation files; H5AD not rehashed"
+}

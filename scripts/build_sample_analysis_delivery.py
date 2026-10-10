@@ -1,30 +1,17 @@
 #!/usr/bin/env python3
-"""Build and deliver sample analysis directory following the Inverted Pyramid Paradigm.
-
-Specification: REVISE_Analysis_Agent/docs/ANALYSIS_OUTPUT_PARADIGM.md
-
-Layout generated:
-output/<Cancer>/<Sample_ID>/
-  ├── report.html                        # Comprehensive executive dashboard (L1)
-  ├── README.md                          # Sample macro narrative summary & navigation (L1)
-  ├── summary.json                       # Sample unified facts JSON (L1)
-  └── analysis/
-      ├── analysis.json                  # Slot manifest
-      ├── README.md                      # Architecture guide
-      ├── 01_bioinformatic_analysis/     # Flat bioinformatic profiling (L2)
-      │   ├── summary.json, FINDINGS.md
-      │   ├── tables/*.csv               # Statistical CSVs (L3)
-      │   └── detailed_data/*.csv        # Granular full CSVs (L4)
-      ├── 02_reconstruction_impact/      # Unmasking & reconstruction impact (L2)
-      │   ├── summary.json, FINDINGS.md
-      │   ├── tables/*.csv
-      │   └── detailed_data/*.csv
-      └── 03_biological_discoveries/     # Structured discoveries & hypotheses (L2)
-          ├── summary.json, FINDINGS.md
-          ├── hypotheses/HYPOTHESIS_*.md # Structured hypotheses for downstream agents
-          ├── tables/*.csv
-          └── detailed_data/*.csv
+"""[DEPRECATED / ARCHIVED PROTOTYPE]
+Historical script used for initial directory structure skeleton.
+DO NOT RUN to overwrite official deliverables.
+All grounded deliverables are managed directly under output/CRC/P2_CRC_Xenium/
+and extracted via prepare_agent_payload.py.
 """
+
+import sys
+
+if __name__ == "__main__":
+    print("[ERROR] build_sample_analysis_delivery.py is archived and deprecated.", file=sys.stderr)
+    print("        It contains legacy hardcoded templates and must not overwrite current deliverables.", file=sys.stderr)
+    sys.exit(1)
 
 import argparse
 import json

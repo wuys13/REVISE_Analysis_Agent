@@ -1,5 +1,7 @@
 # REVISE × Analysis Agent：协同审阅入口
 
+2026-10-10执行方 `6b158ed` 更新后的现状见[第三轮只读复核](20261010-architecture-review/THIRD_PASS_REVIEW.md)：底表数值、完整payload提取及展示资产同步已有实质整改；活动故事、状态/来源和远端代码部署仍partial。下方历史局限不替代该次最新观测。
+
 本仓库的初衷是让 Agent **直接完成下游分析，并能围绕新科学问题扩展分析**。从 REVISE 分支选择性迁入方法，是为了保留科学计算能力和经验，同时解除对重建 backend、旧载体和旧批处理的依赖。Impact 是目前最完整的阅读工作台，不代表全部能力。
 
 2026-09-20 双仓 mini 真实联测及后续收口的当前结果和限制见[现状与缺口](evidence-and-gaps.md)。正式项目配置为 `configs/p2_project.yaml`、`p1_hd_project.yaml`、`p2_visium_project.yaml`，直接引用 REVISE 发布的 sample.yaml。

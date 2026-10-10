@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Build and populate the progressive Three-Tier Analysis Architecture for P2 CRC Xenium.
-
-Slot Architecture (aligned with user instructions):
-1. 01_bioinformatic_analysis:
-   - 全景生信分析（差异表达、MSigDB Hallmark通路、配体-受体细胞通讯、空间共定位）
-2. 02_reconstruction_impact:
-   - 重建前后变化与原始数据去掩盖刻画（空间自相关与噪声消除、原始掩盖被揭示的定量对比、微环境保真度）
-3. 03_biological_discoveries:
-   - 综合分析下的生物学发现与科学假设（特定细胞亚群与靶标基因多维评估、4大核心科学假设与证据矩阵、综合报告）
+"""[DEPRECATED / ARCHIVED PROTOTYPE]
+Historical script used for initial architecture prototype layout.
+DO NOT RUN to overwrite official deliverables.
+All grounded data generation is handled by verified acceptance sources and prepare_agent_payload.py.
 """
+
+import sys
+
+if __name__ == "__main__":
+    print("[ERROR] organize_three_tier_analysis.py is archived and deprecated.", file=sys.stderr)
+    print("        It contains legacy synthetic templates and must not overwrite current deliverables.", file=sys.stderr)
+    print("        Use REVISE_Analysis_Agent/scripts/prepare_agent_payload.py for active payload extraction.", file=sys.stderr)
+    sys.exit(1)
 
 import json
 import shutil

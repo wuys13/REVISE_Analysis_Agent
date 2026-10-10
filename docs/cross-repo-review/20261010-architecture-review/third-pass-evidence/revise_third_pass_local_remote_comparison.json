@@ -1,0 +1,241 @@
+{
+  "observed_at": "2026-10-10T05:55:33.946601+00:00",
+  "remote_observed_at": "2026-10-10T05:54:31.745292+00:00",
+  "local_count": 33,
+  "remote_curated_count": 33,
+  "extra_remote_curated": [],
+  "all_match": true,
+  "files": [
+    {
+      "path": "README.md",
+      "local_size": 8072,
+      "local_sha256": "b95d45cc003de5457d28ac72beff9d61889962ecd715d182f3be57a059227e8f",
+      "remote_sha256": "b95d45cc003de5457d28ac72beff9d61889962ecd715d182f3be57a059227e8f",
+      "match": true
+    },
+    {
+      "path": "agent_input_payload.json",
+      "local_size": 43423,
+      "local_sha256": "9ae24ae6324985161da8f943000af4a3176aa42ea6601c58c1c7976f1579be0f",
+      "remote_sha256": "9ae24ae6324985161da8f943000af4a3176aa42ea6601c58c1c7976f1579be0f",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/FINDINGS.md",
+      "local_size": 1488,
+      "local_sha256": "0037b1a44d6f6bd7f1e8715c581250f87d87a5e74dfc97db5692e3e99737cecf",
+      "remote_sha256": "0037b1a44d6f6bd7f1e8715c581250f87d87a5e74dfc97db5692e3e99737cecf",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/README.md",
+      "local_size": 698,
+      "local_sha256": "82b97e0be91215ba3ca8b907755e897adce651a277f0c19c52a1c7aed51febbf",
+      "remote_sha256": "82b97e0be91215ba3ca8b907755e897adce651a277f0c19c52a1c7aed51febbf",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/detailed_data/focal_subtypes_top_degs.csv",
+      "local_size": 21173,
+      "local_sha256": "680a7d00f53528254996ff6c468b72a8cfbb892660c60915fd8f8a357dba9933",
+      "remote_sha256": "680a7d00f53528254996ff6c468b72a8cfbb892660c60915fd8f8a357dba9933",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/detailed_data/subtype_degs_full.csv",
+      "local_size": 21173,
+      "local_sha256": "680a7d00f53528254996ff6c468b72a8cfbb892660c60915fd8f8a357dba9933",
+      "remote_sha256": "680a7d00f53528254996ff6c468b72a8cfbb892660c60915fd8f8a357dba9933",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/summary.json",
+      "local_size": 687,
+      "local_sha256": "dee925eb41ce615272c2c318a679d2cb26a0f86dda686c23ff1c698bd82d8691",
+      "remote_sha256": "dee925eb41ce615272c2c318a679d2cb26a0f86dda686c23ff1c698bd82d8691",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/tables/colocalization_zscores.csv",
+      "local_size": 1169,
+      "local_sha256": "92545947d1b59187baf9a507ed3267d73b90085981f6ea939606548dd04dd8bf",
+      "remote_sha256": "92545947d1b59187baf9a507ed3267d73b90085981f6ea939606548dd04dd8bf",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/tables/pathway_scores_by_subtype.csv",
+      "local_size": 10586,
+      "local_sha256": "679775a0b9e3a57ff3056f8197860e85b068d4384d24da46c4e559b64576198a",
+      "remote_sha256": "679775a0b9e3a57ff3056f8197860e85b068d4384d24da46c4e559b64576198a",
+      "match": true
+    },
+    {
+      "path": "analysis/01_bioinformatic_analysis/tables/significant_lr_pairs.csv",
+      "local_size": 2566,
+      "local_sha256": "2e904338cdfdbfaf0c68338aa43d3668e39e71af601438c805f2753a42545213",
+      "remote_sha256": "2e904338cdfdbfaf0c68338aa43d3668e39e71af601438c805f2753a42545213",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/FINDINGS.md",
+      "local_size": 1466,
+      "local_sha256": "88b5bdd067aad20e94e1a9f355c4e08727c0142bf1428da0603e3c8138a52625",
+      "remote_sha256": "88b5bdd067aad20e94e1a9f355c4e08727c0142bf1428da0603e3c8138a52625",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/README.md",
+      "local_size": 700,
+      "local_sha256": "f622d57820cc0890dc12ea2ae5d94e281fc3a2236cd8cfdd70ec10649cb892f6",
+      "remote_sha256": "f622d57820cc0890dc12ea2ae5d94e281fc3a2236cd8cfdd70ec10649cb892f6",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/detailed_data/contamination_clearance.csv",
+      "local_size": 389,
+      "local_sha256": "703b75453b95ea167522f39a4b6ede326a3b7d94fcb67d372cf6918038f7dc74",
+      "remote_sha256": "703b75453b95ea167522f39a4b6ede326a3b7d94fcb67d372cf6918038f7dc74",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/detailed_data/noise_reduction_diffusion.csv",
+      "local_size": 559,
+      "local_sha256": "3295c26d760bd5940073ce3ed930260a3f3456bbc4db5b90eb2e3bf27ab6eccc",
+      "remote_sha256": "3295c26d760bd5940073ce3ed930260a3f3456bbc4db5b90eb2e3bf27ab6eccc",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/summary.json",
+      "local_size": 594,
+      "local_sha256": "8290418112f8bfb7ca69f44c7deb6ec78ec0f67bce6d93e1315be862f5ba6832",
+      "remote_sha256": "8290418112f8bfb7ca69f44c7deb6ec78ec0f67bce6d93e1315be862f5ba6832",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/diversity_entropy_delta.csv",
+      "local_size": 414,
+      "local_sha256": "bef324483a2c3ba352de2354f2462e8511d65f089eb83e0257f26865750a6319",
+      "remote_sha256": "bef324483a2c3ba352de2354f2462e8511d65f089eb83e0257f26865750a6319",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/moran_gain_by_lineage.csv",
+      "local_size": 198,
+      "local_sha256": "b7aa97d9186c5a26985776ff7f5d6970ba9b5c017f033aa8c5f1312d2d3325bd",
+      "remote_sha256": "b7aa97d9186c5a26985776ff7f5d6970ba9b5c017f033aa8c5f1312d2d3325bd",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/raw_vs_svc_unmasking_evidence.csv",
+      "local_size": 1672,
+      "local_sha256": "7b2837e987041df4175ef55945ccb1e8e888f82945bd4b02e662293c212bdbd3",
+      "remote_sha256": "7b2837e987041df4175ef55945ccb1e8e888f82945bd4b02e662293c212bdbd3",
+      "match": true
+    },
+    {
+      "path": "analysis/02_reconstruction_impact/tables/systemic_impact_5layers.csv",
+      "local_size": 1893,
+      "local_sha256": "b029fd024f9f7d8a3371c5935973e98db35208846cab2842d29026b37f365392",
+      "remote_sha256": "b029fd024f9f7d8a3371c5935973e98db35208846cab2842d29026b37f365392",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/FINDINGS.md",
+      "local_size": 1285,
+      "local_sha256": "d8ee2c0b0f142705067cb5167e654a20b2f225b46a50a3891ce1309baa9a579a",
+      "remote_sha256": "d8ee2c0b0f142705067cb5167e654a20b2f225b46a50a3891ce1309baa9a579a",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/README.md",
+      "local_size": 535,
+      "local_sha256": "c7d57cd1dc4f708f2a2b7dd0dc27a5e79e331c7d94a0b6da5ee45e2995264b50",
+      "remote_sha256": "c7d57cd1dc4f708f2a2b7dd0dc27a5e79e331c7d94a0b6da5ee45e2995264b50",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/detailed_data/target_lineage_programs.csv",
+      "local_size": 1106,
+      "local_sha256": "755b24b42e9c2e5ba819572fb31afcd849f8ce271acfa828d35aad641cd9769c",
+      "remote_sha256": "755b24b42e9c2e5ba819572fb31afcd849f8ce271acfa828d35aad641cd9769c",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_1_Treg_Mreg_TLS_Niche.md",
+      "local_size": 3758,
+      "local_sha256": "aa1824155dafe3927ead38045887e08f5efffd2638e381d98bbad057edf53213",
+      "remote_sha256": "aa1824155dafe3927ead38045887e08f5efffd2638e381d98bbad057edf53213",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_2_SPP1_TAM_MyoCAF_Invasive_Shell.md",
+      "local_size": 810,
+      "local_sha256": "7b960bb99fb7c22186635a580fe6fd74a283f4a28468e346cf6688506cd3d342",
+      "remote_sha256": "7b960bb99fb7c22186635a580fe6fd74a283f4a28468e346cf6688506cd3d342",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_3_Tprolif_Inflammatory_TAM_Core_Recruitment.md",
+      "local_size": 716,
+      "local_sha256": "5db33e7e906b9c1d99e8597116d105fad5dd4fce3faca201b807b0205ca77edd",
+      "remote_sha256": "5db33e7e906b9c1d99e8597116d105fad5dd4fce3faca201b807b0205ca77edd",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_4_Contractile_vs_Proteolytic_CAF_Heterogeneity.md",
+      "local_size": 3152,
+      "local_sha256": "d31bad245491753169c7398b5e3e0adba85bc75342c2e1a2d175654ed182b0c5",
+      "remote_sha256": "d31bad245491753169c7398b5e3e0adba85bc75342c2e1a2d175654ed182b0c5",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/summary.json",
+      "local_size": 755,
+      "local_sha256": "b0feaf0ca2881f88bb165f60c70f59723b59ebf73d0028ed8df066a11a86cd72",
+      "remote_sha256": "b0feaf0ca2881f88bb165f60c70f59723b59ebf73d0028ed8df066a11a86cd72",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/tables/hypotheses_evidence_matrix.csv",
+      "local_size": 1916,
+      "local_sha256": "7604bd471d176f0028c0888626e317c363d7c610bb4b24f05c70dfadf9b76493",
+      "remote_sha256": "7604bd471d176f0028c0888626e317c363d7c610bb4b24f05c70dfadf9b76493",
+      "match": true
+    },
+    {
+      "path": "analysis/03_biological_discoveries/tables/notable_subtypes_summary.csv",
+      "local_size": 2676,
+      "local_sha256": "6c1545ab49c927a0e6380d1323b763a4c637f4ed8fbdad6f76259721935fce68",
+      "remote_sha256": "6c1545ab49c927a0e6380d1323b763a4c637f4ed8fbdad6f76259721935fce68",
+      "match": true
+    },
+    {
+      "path": "analysis/README.md",
+      "local_size": 1018,
+      "local_sha256": "4066ce49b61564cc50f0a9a4cb579a1d5a2d2f5e1d163292ce344ad46c935314",
+      "remote_sha256": "4066ce49b61564cc50f0a9a4cb579a1d5a2d2f5e1d163292ce344ad46c935314",
+      "match": true
+    },
+    {
+      "path": "analysis/analysis.json",
+      "local_size": 1280,
+      "local_sha256": "db776c3450298ccef43143b895d23c1acdbd59cc55ef8374bf22f6907ee65f3a",
+      "remote_sha256": "db776c3450298ccef43143b895d23c1acdbd59cc55ef8374bf22f6907ee65f3a",
+      "match": true
+    },
+    {
+      "path": "report.html",
+      "local_size": 21494,
+      "local_sha256": "d4fca31d559bea0589b19bf80d5f1683a6448a3b0edc943a2c6f3ad113974876",
+      "remote_sha256": "d4fca31d559bea0589b19bf80d5f1683a6448a3b0edc943a2c6f3ad113974876",
+      "match": true
+    },
+    {
+      "path": "summary.json",
+      "local_size": 5408,
+      "local_sha256": "3ced78a58ad59da0576ed860f86faa4bee5a85e5726fe1845c197cd2c1d350c1",
+      "remote_sha256": "3ced78a58ad59da0576ed860f86faa4bee5a85e5726fe1845c197cd2c1d350c1",
+      "match": true
+    }
+  ]
+}

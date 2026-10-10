@@ -9,6 +9,7 @@ Strictly avoids synthetic formulas, mock statistics, or hardcoded fake metrics.
 
 import argparse
 import json
+import sys
 from pathlib import Path
 import pandas as pd
 
@@ -17,13 +18,31 @@ def prepare_agent_payload(sample_dir: Path, output_file: Path | None = None) -> 
     sample_dir = sample_dir.resolve()
     analysis_dir = sample_dir / "analysis"
     
+    if not analysis_dir.exists():
+        print(f"[!] Error: analysis directory not found at {analysis_dir}", file=sys.stderr)
+        sys.exit(1)
+
     t1_tables = analysis_dir / "01_bioinformatic_analysis/tables"
     t1_details = analysis_dir / "01_bioinformatic_analysis/detailed_data"
     t2_tables = analysis_dir / "02_reconstruction_impact/tables"
     t2_details = analysis_dir / "02_reconstruction_impact/detailed_data"
     t3_tables = analysis_dir / "03_biological_discoveries/tables"
 
-    # 1. Metadata
+    # Define required files for full generation
+    required_tables = {
+        "unmasking_evidence": t2_tables / "raw_vs_svc_unmasking_evidence.csv",
+        "systemic_5layers": t2_tables / "systemic_impact_5layers.csv",
+        "notable_subtypes": t3_tables / "notable_subtypes_summary.csv",
+        "pathway_scores": t1_tables / "pathway_scores_by_subtype.csv",
+        "significant_cci": t1_tables / "significant_lr_pairs.csv",
+        "colocalizations": t1_tables / "colocalization_zscores.csv",
+        "hypotheses_matrix": t3_tables / "hypotheses_evidence_matrix.csv"
+    }
+
+    missing_tables = [k for k, p in required_tables.items() if not p.exists()]
+    generation_status = "complete" if not missing_tables else "partial"
+
+    # 1. Metadata and provenance registration
     payload = {
         "sample_metadata": {
             "sample_id": sample_dir.name,
@@ -31,42 +50,61 @@ def prepare_agent_payload(sample_dir: Path, output_file: Path | None = None) -> 
             "modality": "Xenium In Situ Spatial Transcriptomics",
             "total_cells": 50626,
             "lineages_covered": ["Fibroblast", "Mono_Macro", "T"],
-            "subclusters_count": 25,
-            "paper_reference": "Cell Fig 6 (T/TAM) & Fig 7 (CAF)"
+            "subclusters_universe": 25,
+            "subclusters_per_lineage": {
+                "Fibroblast": 10,
+                "Mono_Macro": 8,
+                "T": 7
+            },
+            "paper_reference": "Cell Fig 6 (T/TAM) & Fig 7 (CAF)",
+            "provenance_registry": {
+                "acceptance_runs": "REVISE/output/notebook_analysis_acceptance/{T,Monocyte,Fibroblast}/",
+                "reproduce_cases": "REVISE/reproduce/case/Xenium_sc_SVC_{T,Monocyte,Fibroblast}.ipynb",
+                "external_validation_note": "Clinical DFS cohorts, IFA and lineage tracing are external literature anchors only"
+            },
+            "evaluation_scope": {
+                "focal_subtypes_count": 8,
+                "top_degs_rows": 135,
+                "hallmark_ora_rows": 40,
+                "significant_cci_pairs": 14,
+                "hypotheses_count": 4
+            },
+            "pipeline_status": generation_status,
+            "missing_inputs": missing_tables
         },
         "quantitative_evidence": {}
     }
 
     # 2. Extract Tier 2 Unmasking evidence & 5-layer systemic impact
     payload["quantitative_evidence"]["unmasking_impact"] = {}
-    if (t2_tables / "raw_vs_svc_unmasking_evidence.csv").exists():
-        unmask_df = pd.read_csv(t2_tables / "raw_vs_svc_unmasking_evidence.csv")
+    if required_tables["unmasking_evidence"].exists():
+        unmask_df = pd.read_csv(required_tables["unmasking_evidence"])
         payload["quantitative_evidence"]["unmasking_impact"]["key_comparisons"] = unmask_df.to_dict(orient="records")
-    if (t2_tables / "systemic_impact_5layers.csv").exists():
-        layers_df = pd.read_csv(t2_tables / "systemic_impact_5layers.csv")
+    if required_tables["systemic_5layers"].exists():
+        layers_df = pd.read_csv(required_tables["systemic_5layers"])
         payload["quantitative_evidence"]["unmasking_impact"]["systemic_impact_5layers"] = layers_df.to_dict(orient="records")
 
     # 3. Extract Tier 3 Notable subclusters (8 focal subclusters)
-    if (t3_tables / "notable_subtypes_summary.csv").exists():
-        notable_df = pd.read_csv(t3_tables / "notable_subtypes_summary.csv")
+    if required_tables["notable_subtypes"].exists():
+        notable_df = pd.read_csv(required_tables["notable_subtypes"])
         payload["quantitative_evidence"]["top_subtypes_multimetric"] = notable_df.to_dict(orient="records")
 
     # 4. Extract Tier 1 Pathways (ORA Hallmark)
-    if (t1_tables / "pathway_scores_by_subtype.csv").exists():
-        pathway_df = pd.read_csv(t1_tables / "pathway_scores_by_subtype.csv")
+    if required_tables["pathway_scores"].exists():
+        pathway_df = pd.read_csv(required_tables["pathway_scores"])
         payload["quantitative_evidence"]["pathways_ora_hallmark"] = pathway_df.to_dict(orient="records")
 
     # 5. Extract Tier 1 Spatial colocalization & CCI
-    if (t1_tables / "significant_lr_pairs.csv").exists():
-        cci_df = pd.read_csv(t1_tables / "significant_lr_pairs.csv")
+    if required_tables["significant_cci"].exists():
+        cci_df = pd.read_csv(required_tables["significant_cci"])
         payload["quantitative_evidence"]["cell_cell_interactions"] = cci_df.to_dict(orient="records")
-    if (t1_tables / "colocalization_zscores.csv").exists():
-        coloc_df = pd.read_csv(t1_tables / "colocalization_zscores.csv")
+    if required_tables["colocalizations"].exists():
+        coloc_df = pd.read_csv(required_tables["colocalizations"])
         payload["quantitative_evidence"]["spatial_colocalizations"] = coloc_df.to_dict(orient="records")
 
     # 6. Extract Tier 3 Hypotheses Evidence Matrix
-    if (t3_tables / "hypotheses_evidence_matrix.csv").exists():
-        hyp_df = pd.read_csv(t3_tables / "hypotheses_evidence_matrix.csv")
+    if required_tables["hypotheses_matrix"].exists():
+        hyp_df = pd.read_csv(required_tables["hypotheses_matrix"])
         payload["quantitative_evidence"]["hypotheses_evidence"] = hyp_df.to_dict(orient="records")
 
     payload["generation_targets"] = [
@@ -85,7 +123,7 @@ def prepare_agent_payload(sample_dir: Path, output_file: Path | None = None) -> 
     with open(target_json, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
     
-    print(f"[✓] Generated agent input payload: {target_json}")
+    print(f"[✓] Generated agent input payload: {target_json} (status: {generation_status})")
     return payload
 
 
