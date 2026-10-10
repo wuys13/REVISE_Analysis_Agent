@@ -1,0 +1,56 @@
+REVISE remote inventory evidence index (captured from qz tool stdout)
+Observed date: 2026-10-10
+Container timezone: UTC; Asia/Shanghai = UTC+08:00.
+This file is a lightweight review index assembled from the qz stdout returned in this task. The original stdout was not redirected to disk at call time; its authoritative raw source is the tool-call transcript in this task.
+
+Notebook selection
+- qz list --json: RUNNING notebooks included cpu-download id 5cd61cb5-b0ec-40a6-ab66-874b1b941573, cpu-4, cpu-3, cpu-2, cpu.
+- Selected notebook: cpu-download.
+
+Key observed_at values
+- 2026-10-10T03:17:51+00:00 (2026-10-10 11:17:51+08:00): 31-file remote curated SHA-256 manifest.
+- 2026-10-10T03:18:27+00:00 (11:18:27+08:00): remote script/document existence and SHA-256 checks.
+- 2026-10-10T03:19:15+00:00 (11:19:15+08:00): old-entry and output-path scan.
+- 2026-10-10T03:20:47+00:00 (11:20:47+08:00): reconstruction metadata and receipt/audit path checks.
+- 2026-10-10T03:21:02+00:00 (11:21:02+08:00): target-process and qz-job occupancy check.
+- 2026-10-10T03:21:25+00:00 (11:21:25+08:00): receipt/audit search and commit ancestry check.
+- 2026-10-10T03:24:30+00:00 (11:24:30+08:00): duplicate-output directory counts.
+
+31 curated files
+Remote path: /inspire/hdd/project/sais-phenotype-fm/public/wuyushuai/zz/0_REVISE_developing/REVISE_code/REVISE/output/CRC/P2_CRC_Xenium
+README.md 867190d85054ee9b3c1b88d63e3dccc3bf482b7592268c97ab949494eeb7e1bf
+agent_input_payload.json 3f596614c00059f359f4bdade419686aa7f512a82c3dbc9d9d39f293e2cf6cbb
+analysis/01_bioinformatic_analysis/FINDINGS.md 0037b1a44d6f6bd7f1e8715c581250f87d87a5e74dfc97db5692e3e99737cecf
+analysis/01_bioinformatic_analysis/README.md 82b97e0be91215ba3ca8b907755e897adce651a277f0c19c52a1c7aed51febbf
+analysis/01_bioinformatic_analysis/detailed_data/subtype_degs_full.csv 769cba6bc086b1a5c6aeb1581033c2e117a30b536a6ed6e84b436d22cf57fc44
+analysis/01_bioinformatic_analysis/summary.json dee925eb41ce615272c2c318a679d2cb26a0f86dda686c23ff1c698bd82d8691
+analysis/01_bioinformatic_analysis/tables/colocalization_zscores.csv bb4c5956c3deceae24c057fbf1b19861b61dbc031560f515ada6b0ba6984626c
+analysis/01_bioinformatic_analysis/tables/pathway_scores_by_subtype.csv e31746405d2cd029ec44346435b3ed5bc5f7666ce877f282e993fec81c4a7b30
+analysis/01_bioinformatic_analysis/tables/significant_lr_pairs.csv 22d4fb70ef63d596c3e4224fef005a57bd2162f9e9b2c633cb57985ff1298291
+analysis/02_reconstruction_impact/FINDINGS.md 88b5bdd067aad20e94e1a9f355c4e08727c0142bf1428da0603e3c8138a52625
+analysis/02_reconstruction_impact/README.md f622d57820cc0890dc12ea2ae5d94e281fc3a2236cd8cfdd70ec10649cb892f6
+analysis/02_reconstruction_impact/detailed_data/contamination_clearance.csv 703b75453b95ea167522f39a4b6ede326a3b7d94fcb67d372cf6918f7dc74
+analysis/02_reconstruction_impact/detailed_data/noise_reduction_diffusion.csv 3295c26d760bd5940073ce3ed930260a3f3456bbc4db5b90eb2e3bf27ab6eccc
+analysis/02_reconstruction_impact/summary.json 8290418112f8bfb7ca69f44c7deb6ec78ec0f67bce6d93e1315be862f5ba6832
+analysis/02_reconstruction_impact/tables/diversity_entropy_delta.csv bef324483a2c3ba352de2354f2462e8511d65f089eb83e0257f26865750a6319
+analysis/02_reconstruction_impact/tables/moran_gain_by_lineage.csv b7aa97d9186c5a26985776ff7f5d6970ba9b5c017f033aa8c5f1312d2d3325bd
+analysis/02_reconstruction_impact/tables/raw_vs_svc_unmasking_evidence.csv a677a6a5ee1846ede40646c19274ac69fe427d83e5fa082b3b122c31256b2bb0
+analysis/03_biological_discoveries/FINDINGS.md d8ee2c0b0f142705067cb5167e654a20b2f225b46a50a3891ce1309baa9a579a
+analysis/03_biological_discoveries/README.md c7d57cd1dc4f708f2a2b7dd0dc27a5e79e331c7d94a0b6da5ee45e2995264b50
+analysis/03_biological_discoveries/detailed_data/target_lineage_programs.csv 755b24b42e9c2e5ba819572fb31afcd849f8ce271acfa828d35aad641cd9769c
+analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_1_Treg_Mreg_TLS_Niche.md a1c2134263adf7d6740f685046a2fa4e00292816b65bc72c34d60c014820f4fa
+analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_2_SPP1_TAM_MyoCAF_Invasive_Shell.md 7b960bb99fb7c22186635a580fe6fd74a283f4a28468e346cf6688506cd3d342
+analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_3_Tprolif_Inflammatory_TAM_Core_Recruitment.md 5db33e7e906b9c1d99e8597116d105fad5dd4fce3faca201b807b0205ca77edd
+analysis/03_biological_discoveries/hypotheses/HYPOTHESIS_4_Contractile_vs_Proteolytic_CAF_Heterogeneity.md f905b45572cb035b21e29f9d1c6dd1e567dc28ae4b569e1bd9cfb4e1f4d5e702
+analysis/03_biological_discoveries/summary.json b0feaf0ca2881f88bb165f60c70f59723b59ebf73d0028ed8df066a11a86cd72
+analysis/03_biological_discoveries/tables/hypotheses_evidence_matrix.csv d5e0d75a06eb301b9345876aac8ad81cc33c7032dab9bab1e66ad8745f3ec4e9
+analysis/03_biological_discoveries/tables/notable_subtypes_summary.csv b074c90b7b63e1df44d5908b3db6e738b760cb6a9066d60607d7d91a469ce7cd
+analysis/README.md 4066ce49b61564cc50f0a9a4cb579a1d5a2d2f5e1d163292ce344ad46c935314
+analysis/analysis.json db776c3450298ccef43143b895d23c1acdbd59cc55ef8374bf22f6907ee65f3a
+report.html d173b43f457f1eae3ff3b550c77160c5c42df8b91f956fbff1f09113ec79a5ac
+summary.json 660a8e672b8d52957ff683a2a749bb932214745b042c226aced906a7d977d82e
+
+Comparison result
+- Remote curated manifest vs local REVISE/output manifest: remote_count=31, local_count=31, missing=[], extra=[], diff_count=0.
+
+No remote state was changed by this inventory.
