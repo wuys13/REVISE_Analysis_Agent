@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Prepare the standardized agent input payload from quantitative analysis results.
+"""Prepare the standardized agent input payload from saved analysis materials.
 
 Specification: docs/delivery_framework/05_agent_data_contract_and_payload.md
-Extracts key quantitative metrics from tables/ and detailed_data/ to supply
-the synthesis Agent with a clean, bounded factual payload for generating narrative texts.
+Extracts bounded quantitative rows and contextual records from tables/ and
+detailed_data/ to supply the synthesis Agent with factual payload material.
 Strictly avoids synthetic formulas, mock statistics, or hardcoded fake metrics.
 """
 
@@ -28,15 +28,17 @@ def prepare_agent_payload(sample_dir: Path, output_file: Path | None = None) -> 
     t2_tables = analysis_dir / "02_reconstruction_impact/tables"
     t3_tables = analysis_dir / "03_biological_discoveries/tables"
 
-    # Define required files for full generation
+    # Define the registered tables and their payload roles.  The role names are
+    # also used in missing_inputs/evidence_files so a consumer can reconcile a
+    # missing or present table without relying on an obsolete filename alias.
     required_tables = {
-        "unmasking_evidence": t2_tables / "raw_vs_svc_unmasking_evidence.csv",
-        "systemic_5layers": t2_tables / "systemic_impact_5layers.csv",
-        "notable_subtypes": t3_tables / "notable_subtypes_summary.csv",
-        "pathway_scores": t1_tables / "pathway_scores_by_subtype.csv",
-        "significant_cci": t1_tables / "significant_lr_pairs.csv",
-        "colocalizations": t1_tables / "colocalization_zscores.csv",
-        "hypotheses_matrix": t3_tables / "hypotheses_evidence_matrix.csv"
+        "historical_count_comparisons": t2_tables / "raw_vs_svc_unmasking_evidence.csv",
+        "systemic_impact_5layers": t2_tables / "systemic_impact_5layers.csv",
+        "focal_subtype_descriptions": t3_tables / "notable_subtypes_summary.csv",
+        "pathways_ora_hallmark": t1_tables / "pathway_scores_by_subtype.csv",
+        "selected_lr_candidates": t1_tables / "selected_lr_candidates.csv",
+        "literature_spatial_context": t1_tables / "literature_spatial_context.csv",
+        "hypothesis_candidates": t3_tables / "hypotheses_evidence_matrix.csv",
     }
 
     missing_tables = [k for k, p in required_tables.items() if not p.exists()]
@@ -89,49 +91,49 @@ def prepare_agent_payload(sample_dir: Path, output_file: Path | None = None) -> 
             "paper_reference": summary.get("paper_alignment"),
             "provenance_registry": registry,
             "evaluation_scope": {
-                "focal_subtypes_count": row_count("notable_subtypes"),
+                "focal_subtypes_count": row_count("focal_subtype_descriptions"),
                 "top_degs_rows": len(deg_frame) if deg_frame is not None else None,
-                "hallmark_ora_rows": row_count("pathway_scores"),
-                "significant_cci_pairs": row_count("significant_cci"),
-                "hypotheses_count": row_count("hypotheses_matrix")
+                "hallmark_ora_rows": row_count("pathways_ora_hallmark"),
+                "selected_cci_rows": row_count("selected_lr_candidates"),
+                "hypotheses_count": row_count("hypothesis_candidates"),
             },
             "pipeline_status": generation_status,
             "missing_inputs": missing_tables,
             "source_status": summary.get("status", "unverified"),
             "acceptance_level": summary.get("acceptance_level", "unverified"),
+            "scientific_acceptance": summary.get("scientific_acceptance"),
             "evidence_files": evidence_files
         },
-        "quantitative_evidence": {}
+        "quantitative_evidence": {},
+        "contextual_evidence": {},
     }
 
     def records(key: str) -> list[dict]:
         frame = frames[key]
         return frame.astype(object).where(frame.notna(), None).to_dict(orient="records")
 
-    # 2. Extract Tier 2 Unmasking evidence & 5-layer systemic impact
-    payload["quantitative_evidence"]["unmasking_impact"] = {}
-    if required_tables["unmasking_evidence"].exists():
-        payload["quantitative_evidence"]["unmasking_impact"]["key_comparisons"] = records("unmasking_evidence")
-    if required_tables["systemic_5layers"].exists():
-        payload["quantitative_evidence"]["unmasking_impact"]["systemic_impact_5layers"] = records("systemic_5layers")
+    # Quantitative evidence is limited to rows that represent saved numerical
+    # comparisons or preselected LR candidates.
+    quantitative_sources = {
+        "historical_count_comparisons": "historical_count_comparisons",
+        "pathways_ora_hallmark": "pathways_ora_hallmark",
+        "preselected_lr_rows": "selected_lr_candidates",
+    }
+    for payload_key, table_key in quantitative_sources.items():
+        if required_tables[table_key].exists():
+            payload["quantitative_evidence"][payload_key] = records(table_key)
 
-    # 3. Extract saved notable subclusters
-    if required_tables["notable_subtypes"].exists():
-        payload["quantitative_evidence"]["top_subtypes_multimetric"] = records("notable_subtypes")
-
-    # 4. Extract Tier 1 Pathways (ORA Hallmark)
-    if required_tables["pathway_scores"].exists():
-        payload["quantitative_evidence"]["pathways_ora_hallmark"] = records("pathway_scores")
-
-    # 5. Extract Tier 1 Spatial colocalization & CCI
-    if required_tables["significant_cci"].exists():
-        payload["quantitative_evidence"]["cell_cell_interactions"] = records("significant_cci")
-    if required_tables["colocalizations"].exists():
-        payload["quantitative_evidence"]["spatial_colocalizations"] = records("colocalizations")
-
-    # 6. Extract Tier 3 Hypotheses Evidence Matrix
-    if required_tables["hypotheses_matrix"].exists():
-        payload["quantitative_evidence"]["hypotheses_evidence"] = records("hypotheses_matrix")
+    # Descriptions, system-level context, literature-derived spatial context,
+    # and hypothesis candidates remain contextual rather than quantitative.
+    contextual_sources = {
+        "focal_subtype_descriptions": "focal_subtype_descriptions",
+        "systemic_impact_5layers": "systemic_impact_5layers",
+        "literature_spatial_colocalizations": "literature_spatial_context",
+        "hypothesis_candidates": "hypothesis_candidates",
+    }
+    for payload_key, table_key in contextual_sources.items():
+        if required_tables[table_key].exists():
+            payload["contextual_evidence"][payload_key] = records(table_key)
 
     view_paths = [analysis_dir / slot / "FINDINGS.md" for slot in (
         "01_bioinformatic_analysis", "02_reconstruction_impact", "03_biological_discoveries"

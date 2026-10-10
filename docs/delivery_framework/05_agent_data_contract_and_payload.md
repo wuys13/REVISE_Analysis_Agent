@@ -14,16 +14,25 @@
     "sample_id": "<from registered sample>",
     "source_status": "<observed status>",
     "acceptance_level": "<technical or scientific level>",
+    "scientific_acceptance": false,
     "evaluation_scope": "<counts and ranges derived from current tables>",
     "provenance_registry": "<optional source registry>",
-    "evidence_files": [
-      {"path": "<relative path>", "sha256": "<current hash>", "rows": "<current rows>"}
-    ],
+    "evidence_files": {
+      "<table role>": {"path": "<relative path>", "sha256": "<current hash>", "rows": "<current rows>"}
+    },
     "pipeline_status": "complete | partial",
     "missing_inputs": []
   },
   "quantitative_evidence": {
-    "<view or analysis>": "<records copied from current result tables>"
+    "historical_count_comparisons": "<records copied from the saved comparison table>",
+    "pathways_ora_hallmark": "<records copied from the saved ORA table>",
+    "preselected_lr_rows": "<records copied from selected LR candidates>"
+  },
+  "contextual_evidence": {
+    "focal_subtype_descriptions": "<saved focal subtype descriptions>",
+    "systemic_impact_5layers": "<saved five-layer context>",
+    "literature_spatial_colocalizations": "<literature-derived spatial context>",
+    "hypothesis_candidates": "<saved candidate hypotheses>"
   },
   "generation_targets": ["<relative paths that a writer may update>"]
 }
@@ -34,6 +43,8 @@
 ## 2. 生成与消费边界
 
 [`scripts/prepare_agent_payload.py`](../../scripts/prepare_agent_payload.py) 负责从已经准备的分析材料读取 metadata、表格和可选 source registry，并登记当前行数、路径和 hash。它不是科学分析 runner，也不触发 Agent 写作；脚本退出成功只表示载荷生成过程完成，不能证明表格内容正确或科学结论已接受。
+
+载荷把保存的数值比较与上下文材料分开：`quantitative_evidence` 只包含历史计数比较、Hallmark ORA 行和预选 LR 行；焦点亚型描述、五层系统影响、论文描述性空间共定位和假说候选放在 `contextual_evidence`。当前 LR 与空间表的文件名分别是 `selected_lr_candidates.csv` 和 `literature_spatial_context.csv`。`evaluation_scope.selected_cci_rows` 是预选记录行数，不能解释为显著配对数量。`scientific_acceptance` 直接复制登记的 `summary.json`；登记缺失时保留 JSON `null`，不能按状态或文件存在推断为 `true` 或 `false`。
 
 生成前应检查：
 

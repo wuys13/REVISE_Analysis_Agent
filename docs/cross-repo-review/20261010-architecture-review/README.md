@@ -1,14 +1,14 @@
 # REVISE 架构与科学发现基建：审阅事实与讨论稿
 
 > [!NOTE]
-> **已归档历史审阅记录 (Archived Review: 2026-10-10)**
-> 本目录记录 2026-10-10 架构审阅与脚本整改过程。文中提及的硬编码历史脚本（如 `run_unbiased_all_subcluster_analysis.py`）已在提交 `2759f93` 中清退，本目录仅供审计溯源与历史依据参考，不代表当前活跃工作流。
+> **已归档历史审阅记录（Archived Review: 2026-10-10）**
+> 本目录记录 2026-10-10 架构审阅与脚本整改过程。文中提及的硬编码历史脚本（如 `run_unbiased_all_subcluster_analysis.py`）已在提交 `2759f93` 中清退；当前维护记录见[内容整理跟进](../../../output/maintenance/20261010-content-followup/README.md)，本目录仅供审计溯源与历史依据参考，不代表当前活跃工作流。
 
-当前判断见[第三轮只读复核与收口反馈](THIRD_PASS_REVIEW.md)：执行方已更新至 `6b158ed`。下方及第二轮文件保留原时点事实；旧payload截断/常数描述已被本轮实际修复。当前仍需处理活动故事与下钻残留、来源/缺失状态及远端代码部署。
+该时点的判断见[第三轮只读复核与收口反馈](THIRD_PASS_REVIEW.md)：执行方当时更新至 `6b158ed`。下方及第二轮文件保留原时点事实；旧 payload 截断/常数描述是该轮观察，不作为当前代码、部署或科学验收状态。当前维护记录见[内容整理跟进](../../../output/maintenance/20261010-content-followup/README.md)。
 
 后续入口：[第二轮审阅](SECOND_PASS_REVIEW.md)、[第二轮执行反馈](SECOND_PASS_EXECUTION_FEEDBACK.md)、[合作方开发说明](COLLABORATOR_BRIEF.md)。用户已确认并行开发，并明确当前体系止于生信分析与生物学假设；临床/IFA/谱系只与假设关联，属于体系外后期验证。下文为第一轮审阅记录，其较宽的验证整合建议已由上述新反馈修正。
 
-状态：`scope_clarified / feedback_draft_ready`。用户已明确系统化层级、uncertainty 方向与 case 验收范围；Fig6/7 对应材料已定位。具体 uncertainty 方法和实施细节尚未定稿。本文件保留核查事实，并按最新共识修订建议；可交给执行 Agent 的组织化反馈见 [EXECUTION_FEEDBACK.md](EXECUTION_FEEDBACK.md)。
+该时点状态为：`scope_clarified / feedback_draft_ready`。用户当时已明确系统化层级、uncertainty 方向与 case 验收范围；Fig6/7 对应材料已定位。具体 uncertainty 方法和实施细节尚未定稿。本文件保留该时点核查事实，并按当时共识整理建议；可交给执行 Agent 的组织化反馈见 [EXECUTION_FEEDBACK.md](EXECUTION_FEEDBACK.md)。
 
 本轮目标：核查本地与 qz 实际落实，判断交接材料是否服务于重建信息评估与可检验科学发现，形成与用户讨论后的执行反馈。只读核查业务实现；本目录仅保存审阅说明。未授权删除旧内容、同步部署或重跑正式科学计算。
 

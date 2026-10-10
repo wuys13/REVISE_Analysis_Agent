@@ -1,12 +1,12 @@
 # REVISE × Analysis Agent：协同审阅入口
 
-2026-10-10执行方 `6b158ed` 更新后的现状见[第三轮只读复核](20261010-architecture-review/THIRD_PASS_REVIEW.md)：底表数值、完整payload提取及展示资产同步已有实质整改；活动故事、状态/来源和远端代码部署仍partial。下方历史局限不替代该次最新观测。
+2026-10-10 执行方 `6b158ed` 的第三轮只读复核是冻结的阶段性观察；本轮内容整理的当前维护记录见[内容整理跟进](../../output/maintenance/20261010-content-followup/README.md)，对应 mini 联测的运行边界见[历史运行证据与缺口](evidence-and-gaps.md)。第三轮正文保留历史限制，不作为当前代码或部署状态。
 
 本仓库的初衷是让 Agent **直接完成下游分析，并能围绕新科学问题扩展分析**。从 REVISE 分支选择性迁入方法，是为了保留科学计算能力和经验，同时解除对重建 backend、旧载体和旧批处理的依赖。Impact 是目前最完整的阅读工作台，不代表全部能力。
 
-2026-09-20 双仓 mini 真实联测及后续收口的当前结果和限制见[现状与缺口](evidence-and-gaps.md)。正式项目配置为 `configs/p2_project.yaml`、`p1_hd_project.yaml`、`p2_visium_project.yaml`，直接引用 REVISE 发布的 sample.yaml。
+2026-09-20 双仓 mini 真实联测的运行结果和适用限制见[现状与缺口](evidence-and-gaps.md)；该页记录相应运行边界，不代表 2026-10-10 整理后的全局状态。正式项目配置为 `configs/p2_project.yaml`、`p1_hd_project.yaml`、`p2_visium_project.yaml`，直接引用 REVISE 发布的 sample.yaml。
 
-本说明从消费端组织审阅；[上游审阅入口](../../../REVISE/docs/development/reconstruction-analysis/cross-repo-review.md)从生产端组织。两者引用各自实现，不定义第二套协议。适用版本、证据和未完成工作见[现状与缺口](evidence-and-gaps.md)。
+本说明从消费端组织审阅；[上游审阅入口](../../../REVISE/docs/development/reconstruction-analysis/cross-repo-review.md)从生产端组织。两者引用各自实现，不定义第二套协议。适用版本、证据和未完成工作见[现状与缺口](evidence-and-gaps.md)；本轮整理维护入口见[内容整理跟进](../../output/maintenance/20261010-content-followup/README.md)。
 
 ## 一条端到端主线
 

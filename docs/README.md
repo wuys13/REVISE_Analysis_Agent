@@ -23,16 +23,17 @@
 
 | 文档 | 核心主题 | 说明 |
 |---|---|---|
+| [`cross-repo-review/README.md`](cross-repo-review/README.md) | **双仓审阅入口** | 当前状态、协议索引和历史审阅导航 |
 | [`cross-repo-review/contract-and-code.md`](cross-repo-review/contract-and-code.md) | **跨仓符号与代码对齐** | 上游生产与下游消费的代码行号、符号与配置对应关系 |
-| [`cross-repo-review/evidence-and-gaps.md`](cross-repo-review/evidence-and-gaps.md) | **验收基准与边界备忘** | 冻结的双仓验收证据基线及当前未决边界 |
+| [`cross-repo-review/evidence-and-gaps.md`](cross-repo-review/evidence-and-gaps.md) | **验收基准与边界备忘** | 2026-09-20 mini 联测的验收基线、适用范围和相应未决边界；不替代当前整理维护状态 |
 
 ---
 
-## 3. 📦 历史审计与演进留档 (Archived Audits - 仅供溯源)
+## 3. 📦 历史审计与演进记录（含仍有效限制）
 
-阶段性审阅过程备忘与历史迁移记录，供溯源核查，不作为当前日常开发规范：
+阶段性审阅过程备忘与历史迁移记录供溯源核查，不作为当前日常开发规范；当前整理与维护状态优先看[内容整理跟进](../output/maintenance/20261010-content-followup/README.md)，相应运行证据与适用边界见 `evidence-and-gaps.md`，记录中仍适用于相同输入和验收范围的限制继续有效：
 
 | 目录 / 文档 | 属性 | 说明 |
 |---|---|---|
 | [`cross-repo-review/20261010-architecture-review/`](cross-repo-review/20261010-architecture-review/README.md) | *[Archived Review]* | 2026-10-10 架构审阅与脚本整改过程记录（注：其中提及的硬编码旧脚本已在 commit `2759f93` 中清退，本目录仅供审计凭证保留） |
-| [`migration.md`](migration.md) | *[Archived Log]* | 从单体仓向独立 Analysis Agent 拆分时的技术检查与 Playwright 验收记录 |
+| [`migration.md`](migration.md) | *[Historical migration & acceptance]* | 记录从单体仓拆分、实际验收、未完成项和历史限制；当前整理与维护状态优先看[内容整理跟进](../output/maintenance/20261010-content-followup/README.md)，相应运行证据与适用边界见 `evidence-and-gaps.md`，历史测试数不自动代表当前通过 |
