@@ -14,6 +14,7 @@
 
 | 要做什么 | 入口 |
 | --- | --- |
+| 理解系统交付规范体系（渐进式披露、统计排行、生物学对齐与 Agent 载荷） | [交付规范框架 (Delivery Framework)](docs/delivery_framework/README.md) |
 | 让 GPT 协同审阅 REVISE 与本仓库 | [双仓库审阅入口](docs/cross-repo-review/README.md) |
 | 理解仓库边界、核心设计 | [架构](docs/architecture.md) |
 | 准备输入或调用 API／批量命令 | [输入输出协议](docs/input-output.md) |
