@@ -14,12 +14,22 @@
 | **CCI / 通讯** | sender/receiver、ligand/receptor 及其空间支持到什么程度？ | `methods.cell_communication` 与已登记的 producer/case 结果 | wrapper 不是完整 spatial CCI workflow；表达候选、邻近支持和功能因果不可混写 |
 | **区域 / niche** | 变化位于哪些坐标、区域、边界或邻域？ | `methods.regions`、Anatomy/State/Gain 结果、空间图 | 区域来源和尺度需登记；坐标和共定位不单独证明 TLS 成熟度、力学、血流或因果机制 |
 
-## 2. 证据链
+## 2. 双轨评测体系 (Dual-Track Evaluation)
+
+为了准确度量重建增益，避免由于全片未重构细胞（如 76% 的背景）稀释真实生物学效应，评测严格区分两条评估轨：
+
+| 评估轨 (Scope) | 细胞范围 (示例: P2_CRC) | 评测目标与设计意图 | 核心指标重点 |
+| --- | --- | --- | --- |
+| **Track 1: 全景大盘 (All Cells)** | 340,837 细胞 (全片 100%) | 检验全局组织解剖边界高保真度，验证未重构细胞保持 0% 扰动，确保大盘基线稳定。 | 宏观更迭率、全量基因背景 Moran's I 中位数 ($\approx 0.07$ ~ $0.09$)、全片 EMT 盲测均值。 |
+| **Track 2: 谱系靶向 (Focal Lineages)** | 81,219 细胞 (T / Fibroblast / Mono_Macro) | 100% 经历重建的靶向细胞，精确度量 Drop-out 噪声消除与微环境程序跃升。 | 细分亚群更迭率 (57.9%)、高变/特征基因 Moran $\Delta I$ (+0.4509)、侵袭前沿 EMT 评分跃升 (+0.5829)、双 Baseline 生态位多样性。 |
+
+## 3. 证据链
 
 建议按以下顺序阅读，而不是用一组正向 KPI 代替全层覆盖：
 
 ```text
 输入身份与单位语义
+  -> 区分全景大盘 (All Cells) 与 谱系靶向 (Focal Lineages) 评估轨
   -> 标签/表达/坐标的可评估范围
   -> 单层结果与分母
   -> 跨层连接（基因 -> 程序 -> 通讯/邻域 -> 区域）

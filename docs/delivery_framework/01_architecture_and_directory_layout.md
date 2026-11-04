@@ -14,20 +14,35 @@ L3  统计事实               result.outputs 登记的 tables/*.csv
 L4  细节与展示             figures/、report.html、按需明细
 ```
 
-`01_bioinformatic_analysis`、`02_reconstruction_impact` 和
-`03_biological_discoveries` 是把同一组事实组织给读者的三个槽位。它们不要求写成正式输出目录，也不允许绕过 `index.json`、`result.json` 和输出 manifest 另建事实登记。
+交付框架采用统一的 5 级输出与发现推进架构：
+
+```text
+00_final_discoveries/          # 精选终版生物学发现与验证故事（专家/Agent严选入册）
+01_bioinformatic_analysis/     # 原生基础生信全量分析基线（按4大领域结构化展开）
+    ├── domain1_single_cell/           # 细胞类型分群、降维、Marker检测与组成谱
+    ├── domain2_spatial_molecular/     # 空间Moran's I自相关、空间共表达模式、组织转录组连续性
+    ├── domain3_functional_programs/   # Hallmark通路、功能程序AUCell/UCell、代谢/应激梯度
+    └── domain4_microenvironment_niche/# 细胞邻域图谱、微环境多样性、共定位互作网络
+02_reconstruction_impact/      # REVISE核心评测：双轨五层重建对比（Raw vs Recon）
+    ├── all_cells/                     # Track 1: 全切片全景大盘基线（宏观解剖保真与未重构背景稳定性）
+    └── focal_lineages/                # Track 2: 重构靶向谱系深度增益（解构drop-out噪声、捕获生物学跃升）
+98_discovery_pipelines/        # 自动启发式挖掘流水线（最大重构扰动、解蔽隐藏亚群、微环境重布线）
+99_candidate_discoveries/      # 候选生物学发现线索池（待校验、待评分候选假说清单）
+```
 
 ## 2. 正式输出树
 
 ```text
 output/
 └── <sample_id>/
-    ├── index.json                         # 样本级结果导航
-    └── <analysis>/
-        ├── result.json                    # 参数、状态、限制、输出 manifest
-        ├── tables/                         # 本次结果登记的统计表
-        ├── figures/                        # 本次结果登记的图
-        └── report.html                    # 只读已保存结果的报告（如有）
+    ├── index.json                             # 样本级全局导航与元数据
+    ├── 00_final_discoveries/                  # 严选最终发现与故事
+    ├── 01_bioinformatic_analysis/             # 结构化基础生信基线
+    ├── 02_reconstruction_impact/              # 双轨五层重建评测核心
+    │   ├── all_cells/                         # 全景大盘评估与报告
+    │   └── focal_lineages/                    # 靶向谱系评估与报告
+    ├── 98_discovery_pipelines/                # 启发式挖掘流水线产物
+    └── 99_candidate_discoveries/              # 候选发现线索池
 ```
 
 实际发布的分析名称由 `runner.ANALYSES`、项目配置和样本执行决定。目前正式入口见[分析能力索引](../analyses/README.md)；缺少的 CCI、TLS 或其他后续能力不能因为阅读槽位存在而被假定为已经运行。
