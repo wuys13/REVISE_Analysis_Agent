@@ -18,11 +18,11 @@ L4  细节与展示             figures/、report.html、按需明细
 
 ```text
 00_final_discoveries/          # 精选终版生物学发现与验证故事（专家/Agent严选入册）
-01_bioinformatic_analysis/     # 原生基础生信全量分析基线（按4大领域结构化展开）
-    ├── domain1_single_cell/           # 细胞类型分群、降维、Marker检测与组成谱
-    ├── domain2_spatial_molecular/     # 空间Moran's I自相关、空间共表达模式、组织转录组连续性
-    ├── domain3_functional_programs/   # Hallmark通路、功能程序AUCell/UCell、代谢/应激梯度
-    └── domain4_microenvironment_niche/# 细胞邻域图谱、微环境多样性、共定位互作网络
+01_bioinformatic_analysis/     # 原生基础生信全量分析基线（4 大核心生信体系）
+    ├── 01_cell_clustering_and_markers/       # 细胞分群、亚型注释、Marker检测与组成谱
+    ├── 02_spatial_variable_genes/            # 空间变异基因 (SVGs)、Moran's I 空间自相关
+    ├── 03_functional_pathways_and_programs/  # Hallmark 通路、功能程序 AUCell 活性与梯度
+    └── 04_cellular_niches_and_communication/ # 细胞空间共定位、配受体互作 (CCI) 与生态位
 02_reconstruction_impact/      # REVISE核心评测：双轨五层重建对比（Raw vs Recon）
     ├── all_cells/                     # Track 1: 全切片全景大盘基线（宏观解剖保真与未重构背景稳定性）
     └── focal_lineages/                # Track 2: 重构靶向谱系深度增益（解构drop-out噪声、捕获生物学跃升）

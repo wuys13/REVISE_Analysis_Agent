@@ -1,1 +1,2 @@
 from .five_layer_evaluation import FiveLayerEvaluator
+from .bioinformatic_analysis import BioinformaticAnalysisRunner
