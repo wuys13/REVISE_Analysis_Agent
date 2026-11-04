@@ -24,10 +24,21 @@ L4  细节与展示             figures/、report.html、按需明细
     ├── 03_functional_pathways_and_programs/  # Hallmark 通路、功能程序 AUCell 活性与梯度
     └── 04_cellular_niches_and_communication/ # 细胞空间共定位、配受体互作 (CCI) 与生态位
 02_reconstruction_impact/      # REVISE核心评测：双轨五层重建对比（Raw vs Recon）
-    ├── all_cells/                     # Track 1: 全切片全景大盘基线（宏观解剖保真与未重构背景稳定性）
-    └── focal_lineages/                # Track 2: 重构靶向谱系深度增益（解构drop-out噪声、捕获生物学跃升）
-98_discovery_pipelines/        # 自动启发式挖掘流水线（最大重构扰动、解蔽隐藏亚群、微环境重布线）
-99_candidate_discoveries/      # 候选生物学发现线索池（待校验、待评分候选假说清单）
+    ├── tables/summary_dual_track_metrics.csv  # 双轨全量五层指标对比大表
+    ├── all_cells/                     # Track 1: 全景大盘基线（全切片宏观保真）
+    │   ├── 01_st_unit/                # 空间单元与大类更迭统计表及空间组分图
+    │   ├── 02_gene/                   # 全量基因自相关大表及空间对比 Case
+    │   ├── 03_pathway/                # 全片微环境通路打分大表及 EMT 空间梯度 Case
+    │   ├── 04_cell_cell/              # 全切片尺度说明 (宏观尺度聚焦解剖全局)
+    │   └── 05_region/                 # 解剖大区分区图与三大谱系定量筛选依据矩阵 (承上启下)
+    └── focal_lineages/                # Track 2: 重构靶向谱系深度增益（三大谱系深度跃升）
+        ├── 01_st_unit/                # 25精细亚型解卷积、Matched-K 混淆矩阵与 Changed Units
+        ├── 02_gene/                   # 谱系特异 Marker 空间自相关 ΔI 提升
+        ├── 03_pathway/                # myCAF/TAM/T 极化程序 AUCell 跃升 (EMT 近4倍增益)
+        ├── 04_cell_cell/              # 多尺度滑动方窗局部生态多样性张量 (双 Baseline 验证)
+        └── 05_region/                 # 高异质性 State Region 在肿瘤侵袭界面的精准物理叠合
+98_discovery_pipelines/        # 自动启发式挖掘流水线（ΔMoran扫描、断裂带检测、接触通讯）
+99_candidate_discoveries/      # 候选生物学发现线索池（带评分候选假说清单）
 ```
 
 ## 2. 正式输出树
@@ -35,14 +46,21 @@ L4  细节与展示             figures/、report.html、按需明细
 ```text
 output/
 └── <sample_id>/
-    ├── index.json                             # 样本级全局导航与元数据
-    ├── 00_final_discoveries/                  # 严选最终发现与故事
-    ├── 01_bioinformatic_analysis/             # 结构化基础生信基线
-    ├── 02_reconstruction_impact/              # 双轨五层重建评测核心
-    │   ├── all_cells/                         # 全景大盘评估与报告
-    │   └── focal_lineages/                    # 靶向谱系评估与报告
-    ├── 98_discovery_pipelines/                # 启发式挖掘流水线产物
-    └── 99_candidate_discoveries/              # 候选发现线索池
+    ├── sample.yaml                            # 样本配置与发布协议
+    ├── summary.json                           # 全局综合指标字典
+    ├── report.html                            # 综合网页评测报告
+    ├── all_cells_report.html                  # 轨 1: 全景大盘独立报告
+    ├── lineages_report.html                   # 轨 2: 谱系靶向独立报告
+    ├── figures/                               # 网页离线渲染矢量图库
+    └── analysis/                              # 5 级统一分析体系
+        ├── 00_final_discoveries/              # 严选最终发现与故事 (final_validated_stories.csv)
+        ├── 01_bioinformatic_analysis/         # 4 大基础生信基线 (01-04)
+        ├── 02_reconstruction_impact/          # 双轨五层重建评测核心
+        │   ├── tables/                        # summary_dual_track_metrics.csv
+        │   ├── all_cells/ (01_st_unit ~ 05_region)
+        │   └── focal_lineages/ (01_st_unit ~ 05_region)
+        ├── 98_discovery_pipelines/            # 启发式挖掘流水线 (pipeline_execution_registry.csv)
+        └── 99_candidate_discoveries/          # 候选发现线索池 (candidate_hypotheses.csv)
 ```
 
 实际发布的分析名称由 `runner.ANALYSES`、项目配置和样本执行决定。目前正式入口见[分析能力索引](../analyses/README.md)；缺少的 CCI、TLS 或其他后续能力不能因为阅读槽位存在而被假定为已经运行。
